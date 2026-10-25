@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block titulo %}Auditoria{% endblock %}
+{% block conteudo %}
+{% set grupos = [('', 'Todas as ações'), ('login', 'Acessos ao sistema'), ('cofre_senha', 'Senhas do cofre vistas/copiadas'), ('senha_pc', 'Senhas de PCs'), ('cofre', 'Alterações no cofre'), ('equipamento', 'Alterações no estoque'), ('usuario', 'Usuários'), ('backup', 'Backups')] %}
+<div class="topo"><div><h1>Auditoria</h1><p>Últimos 1.000 registros conforme os filtros</p></div></div>
+<section class="painel">
+  <form class="filtros" method="get">
+    <select name="usuario" aria-label="Usuário"><option value="">Todos os usuários</option>
+      {% for u in usuarios %}<option {{ 'selected' if f.usuario == u }}>{{ u }}</option>{% endfor %}</select>
+    <select name="acao" aria-label="Ação">{% for v, r in grupos %}<option value="{{ v }}" {{ 'selected' if (f.acao or '') == v }}>{{ r }}</option>{% endfor %}</select>
+    <label class="check">De <input type="date" name="de" value="{{ f.de }}"></label>
+    <label class="check">até <input type="date" name="ate" value="{{ f.ate }}"></label>
+    <button class="btn" type="submit">Filtrar</button>
+  </form>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Data</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>IP</th></tr></thead>
+    <tbody>
+    {% for r in registros %}
+      <tr><td style="white-space:nowrap">{{ r.data|databr(true) }}</td><td>{{ r.usuario or '—' }}</td>
+          <td><span class="tag {{ 'tag-laranja' if 'visualizada' in r.acao or 'copiada' in r.acao or 'falhou' in r.acao }}">{{ r.acao.replace('_', ' ') }}</span></td>
+          <td>{{ r.detalhe or '' }}</td><td>{{ r.ip or '' }}</td></tr>
+    {% else %}
+      <tr><td colspan="5" class="vazio">Nenhum registro para esses filtros.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

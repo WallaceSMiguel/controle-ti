@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block titulo %}Painel{% endblock %}
+{% block conteudo %}
+{% set cores = {'Em uso':'var(--s-uso)','Em estoque':'var(--s-estoque)','Em manutenção':'var(--s-manut)','Emprestado':'var(--s-emprest)','Baixado':'var(--s-baixa)'} %}
+<div class="topo">
+  <div><h1>Olá, {{ usuario.nome.split()[0] }}</h1>
+    <p>{% if usuario.todas_unidades %}Visão de todas as unidades{% else %}Visão das suas unidades{% endif %}</p></div>
+  <div class="acoes">
+    {% if usuario.pode_editar_estoque %}<a class="btn btn-primario" href="{{ url_for('estoque.novo') }}">Cadastrar equipamento</a>{% endif %}
+    {% if usuario.pode_cofre %}<a class="btn" href="{{ url_for('cofre.novo') }}">Nova senha no cofre</a>{% endif %}
+  </div>
+</div>
+
+<section class="painel">
+  <div class="painel-corpo">
+    <div class="total-grande"><strong>{{ total }}</strong><span>equipamentos cadastrados</span></div>
+    <div class="distribuicao" role="img" aria-label="Distribuição por status">
+      {% for s, n in por_status.items() if n %}
+        <span style="width: {{ (n / total * 100)|round(2) }}%; background: {{ cores[s] }}" title="{{ s }}: {{ n }}"></span>
+      {% endfor %}
+    </div>
+    <div class="legenda">
+      {% for s, n in por_status.items() %}
+      <a href="{{ url_for('estoque.lista', status=s) }}" style="--cor: {{ cores[s] }}">
+        <span class="qtd">{{ n }}</span><span class="rot">{{ s }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="painel">
+  <div class="painel-cab"><div><h2>Pontos de atenção</h2><p>Pela configuração lida do msinfo32 ({{ com_hw }} equipamento{{ 's' if com_hw != 1 }} com configuração)</p></div>
+    {% if usuario.pode_editar_estoque %}<a class="btn btn-peq" href="{{ url_for('estoque.importar_lote') }}">Importar do msinfo32</a>{% endif %}</div>
+  <div class="atencao">
+    {% for a in atencao %}
+      <a href="{{ url_for('estoque.lista', alerta=a.chave) }}"><span class="qtd {{ 'alerta' if a.n }}">{{ a.n }}</span><span class="rot">{{ a.rotulo }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="grade-2-1" style="margin-top:18px">
+  <section class="painel">
+    <div class="painel-cab"><div><h2>Por unidade</h2><p>Equipamentos ativos (sem os baixados)</p></div></div>
+    <div class="tabela-wrap"><table>
+      <thead><tr><th>Unidade</th><th class="num">Total</th><th class="num">Em uso</th><th class="num">Em estoque</th><th class="num">Manutenção</th></tr></thead>
+      <tbody>
+      {% set maior = (por_unidade|map(attribute='total')|max) if por_unidade else 0 %}
+      {% for u in por_unidade %}
+        <tr><td><strong>{{ u.nome }}</strong>
+              <div class="barra-mini" style="margin-top:6px"><span style="width: {{ (u.total / maior * 100) if maior else 0 }}%"></span></div></td>
+            <td class="num"><strong>{{ u.total }}</strong></td><td class="num">{{ u.em_uso or 0 }}</td>
+            <td class="num">{{ u.estoque or 0 }}</td><td class="num">{{ u.manutencao or 0 }}</td></tr>
+      {% else %}
+        <tr><td colspan="5" class="vazio">Nenhuma unidade liberada para o seu usuário.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+  </section>
+
+  <section class="painel">
+    <div class="painel-cab"><h2>Por tipo</h2></div>
+    <ul class="lista-simples">
+      {% for t in por_tipo %}
+        <li><a href="{{ url_for('estoque.lista', tipo=t.tipo) }}">{{ t.tipo }}</a><strong>{{ t.n }}</strong></li>
+      {% else %}
+        <li class="sub">Nenhum equipamento cadastrado ainda.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="grade" style="margin-top:18px">
+  <section class="painel">
+    <div class="painel-cab"><div><h2>Garantias vencendo</h2><p>Próximos 60 dias</p></div></div>
+    <ul class="lista-simples">
+      {% for g in garantias %}
+        <li><span><a href="{{ url_for('estoque.detalhe', eid=g.id) }}">{{ g.tipo }} {{ g.marca or '' }} {{ g.modelo or '' }}</a>
+            <span class="sub"> · {{ g.unidade }}{% if g.patrimonio %} · Pat. {{ g.patrimonio }}{% endif %}</span></span>
+            <span class="tag tag-laranja">{{ g.garantia_ate|databr }}</span></li>
+      {% else %}
+        <li class="sub">Nenhuma garantia vence nos próximos 60 dias.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% if usuario.pode_cofre %}
+  <section class="painel">
+    <div class="painel-cab"><div><h2>Senhas para trocar</h2><p>Sem alteração há mais de 180 dias</p></div></div>
+    <ul class="lista-simples">
+      {% for s in senhas_antigas %}
+        <li><span><a href="{{ url_for('cofre.editar', iid=s.id) }}">{{ s.sistema }}</a>
+            <span class="sub"> · {{ s.unidade or 'Geral' }}</span></span>
+            <span class="tag">{{ s.senha_alterada_em|databr }}</span></li>
+      {% else %}
+        <li class="sub">Todas as senhas do cofre foram trocadas nos últimos 180 dias.</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

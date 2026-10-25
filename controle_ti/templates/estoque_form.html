@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% from "_macros.html" import erros_form %}
+{% block titulo %}{{ 'Cadastrar equipamento' if novo else 'Editar equipamento' }}{% endblock %}
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('estoque.lista') if novo else url_for('estoque.detalhe', eid=e.id) }}">← Voltar</a>
+  <h1>{{ 'Cadastrar equipamento' if novo else 'Editar equipamento' }}</h1></div>
+  {% if novo %}<div class="acoes"><a class="btn" href="{{ url_for('estoque.importar_lote') }}">Importar vários arquivos</a></div>{% endif %}
+</div>
+{{ erros_form(erros) }}
+{% for a in avisos %}
+  {% if a is string %}<div class="msg {{ 'msg-aviso' if a.startswith('Atenção') else 'msg-ok' }}">{{ a }}</div>
+  {% else %}<div class="msg msg-aviso">Já existe um equipamento com o hostname <strong>{{ a[1].hostname }}</strong> ({{ a[1].tipo }} {{ a[1].modelo or '' }}, {{ a[1].unidade }}).
+    <a href="{{ url_for('estoque.detalhe', eid=a[1].id) }}">Abrir o cadastro existente</a> para atualizar a configuração lá, ou continue se for outro equipamento.</div>{% endif %}
+{% endfor %}
+
+<form method="post" class="painel" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="hw_json" value="{{ hw_json }}">
+  <button type="submit" name="acao" value="salvar" class="oculto" tabindex="-1" aria-hidden="true"></button>
+
+  <div class="secao-form importa">
+    <div class="importa-ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M12 7v5M9.5 9.5 12 12l2.5-2.5"/></svg></div>
+    <div class="importa-txt">
+      <h3>Preencher pelo msinfo32</h3>
+      <p>No computador, abra <strong>msinfo32</strong> e use <em>Arquivo › Salvar</em> (.nfo) ou <em>Arquivo › Exportar</em> (.txt). Envie o arquivo aqui para preencher hostname, marca, modelo e a configuração.</p>
+    </div>
+    <div class="importa-acao">
+      <input type="file" name="msinfo" id="msinfo" accept=".nfo,.txt" aria-label="Arquivo do msinfo32" data-auto="#btn-ler">
+      <button class="btn" id="btn-ler" type="submit" name="acao" value="importar" formnovalidate>Ler arquivo</button>
+    </div>
+  </div>
+
+  <div class="secao-form"><h3>Identificação</h3>
+    <div class="campos">
+      <div class="campo"><label for="unidade_id">Unidade</label>
+        <select id="unidade_id" name="unidade_id" required><option value="">Selecione…</option>
+          {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if e.unidade_id|string == u.id|string }}>{{ u.nome }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="tipo">Tipo</label>
+        <select id="tipo" name="tipo" required><option value="">Selecione…</option>
+          {% for t in tipos %}<option {{ 'selected' if e.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="status">Status</label>
+        <select id="status" name="status" required>
+          {% for s in status %}<option {{ 'selected' if e.status == s }}>{{ s }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="marca">Marca</label><input type="text" id="marca" name="marca" value="{{ e.marca or '' }}" placeholder="Dell, Lenovo, HP…"></div>
+      <div class="campo"><label for="modelo">Modelo</label><input type="text" id="modelo" name="modelo" value="{{ e.modelo or '' }}"></div>
+      <div class="campo"><label for="numero_serie">Número de série</label><input type="text" id="numero_serie" name="numero_serie" value="{{ e.numero_serie or '' }}"></div>
+      <div class="campo"><label for="patrimonio">Patrimônio</label><input type="text" id="patrimonio" name="patrimonio" value="{{ e.patrimonio or '' }}"></div>
+      <div class="campo"><label for="hostname">Hostname</label><input type="text" id="hostname" name="hostname" value="{{ e.hostname or '' }}" placeholder="VAL-DC-012"></div>
+    </div>
+  </div>
+
+  <div class="secao-form"><h3>Configuração</h3>
+    <div class="campos">
+      <div class="campo"><label for="hw_processador">Processador</label>
+        <input type="text" id="hw_processador" name="hw_processador" value="{{ hw.processador or '' }}" placeholder="Intel Core i5-10500"></div>
+      <div class="campo"><label for="hw_memoria_gb">Memória (GB)</label>
+        <input type="text" id="hw_memoria_gb" name="hw_memoria_gb" inputmode="decimal" value="{{ (hw.memoria_gb|string).replace('.0','').replace('.', ',') if hw.memoria_gb else '' }}" placeholder="16"></div>
+      <div class="campo"><label for="hw_armazenamento">Armazenamento</label>
+        <input type="text" id="hw_armazenamento" name="hw_armazenamento" value="{{ hw.armazenamento or '' }}" placeholder="SSD 512 GB"></div>
+      <div class="campo"><label for="hw_sistema_operacional">Sistema operacional</label>
+        <input type="text" id="hw_sistema_operacional" name="hw_sistema_operacional" value="{{ hw.sistema_operacional or '' }}" placeholder="Windows 11 Pro"></div>
+    </div>
+    {% if hw.discos or hw.rede or hw.video or hw.placa_mae %}
+    <div class="hw-extra">
+      <span>Detalhes lidos do msinfo32, que vão para a ficha:</span>
+      {% if hw.nucleos %}<span class="tag">{{ hw.nucleos }} núcleos / {{ hw.threads or hw.nucleos }} threads</span>{% endif %}
+      {% for d in hw.discos %}<span class="tag">{{ d.tipo ~ ' ' if d.tipo }}{{ d.capacidade }} · {{ d.modelo }}</span>{% endfor %}
+      {% for r in hw.rede %}<span class="tag">{{ r.mac }}{{ ' · ' ~ r.ip if r.ip }}</span>{% endfor %}
+      {% for v in hw.video %}<span class="tag">{{ v.nome }}</span>{% endfor %}
+      {% if hw.placa_mae %}<span class="tag">Placa {{ hw.placa_mae }}</span>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="secao-form"><h3>Uso</h3>
+    <div class="campos">
+      <div class="campo"><label for="responsavel">Responsável</label><input type="text" id="responsavel" name="responsavel" value="{{ e.responsavel or '' }}"
+        {% if hw.usuario_logado and not e.responsavel %}placeholder="Último login: {{ hw.usuario_logado.split('\\')[-1] }}"{% endif %}></div>
+      <div class="campo"><label for="setor">Setor</label><input type="text" id="setor" name="setor" value="{{ e.setor or '' }}" placeholder="Fiscal, DP, Contábil…"></div>
+      <div class="campo largo"><label for="especificacoes">Outras especificações</label>
+        <textarea id="especificacoes" name="especificacoes" placeholder="Monitor extra, leitor de certificado, acessórios…">{{ e.especificacoes or '' }}</textarea></div>
+    </div>
+  </div>
+  <div class="secao-form"><h3>Compra e garantia</h3>
+    <div class="campos">
+      <div class="campo"><label for="data_compra">Data da compra</label><input type="date" id="data_compra" name="data_compra" value="{{ e.data_compra or '' }}"></div>
+      <div class="campo"><label for="garantia_ate">Garantia até</label><input type="date" id="garantia_ate" name="garantia_ate" value="{{ e.garantia_ate or '' }}"></div>
+      <div class="campo"><label for="fornecedor">Fornecedor</label><input type="text" id="fornecedor" name="fornecedor" value="{{ e.fornecedor or '' }}"></div>
+      <div class="campo"><label for="nota_fiscal">Nota fiscal</label><input type="text" id="nota_fiscal" name="nota_fiscal" value="{{ e.nota_fiscal or '' }}"></div>
+      <div class="campo largo"><label for="observacoes">Observações</label>
+        <textarea id="observacoes" name="observacoes">{{ e.observacoes or '' }}</textarea>
+        <small>Não anote senhas aqui. Use a seção de senhas do equipamento, que é criptografada.</small></div>
+    </div>
+  </div>
+  <div class="form-rodape">
+    <a class="btn" href="{{ url_for('estoque.lista') if novo else url_for('estoque.detalhe', eid=e.id) }}">Cancelar</a>
+    <button class="btn btn-primario" type="submit" name="acao" value="salvar">{{ 'Cadastrar equipamento' if novo else 'Salvar alterações' }}</button>
+  </div>
+</form>
+{% endblock %}

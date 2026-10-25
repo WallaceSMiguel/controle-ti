@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf" content="{{ csrf_token() }}">
+  <title>{% block titulo %}Controle TI{% endblock %} · Valorização</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body data-timeout="{{ timeout_min if usuario else 0 }}">
+{% if usuario %}
+{% set ep = request.endpoint or '' %}
+<div class="app">
+  <aside class="lateral">
+    <div class="marca">
+      <img src="{{ url_for('static', filename='logo.svg') }}" alt="">
+      <div>
+        <strong>Valorização</strong>
+        <div class="faixa"></div>
+        <span>Controle de TI</span>
+      </div>
+    </div>
+    <nav class="menu">
+      <a href="{{ url_for('painel.inicio') }}" class="{{ 'ativo' if ep.startswith('painel') }}">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Painel</a>
+      <a href="{{ url_for('estoque.lista') }}" class="{{ 'ativo' if ep.startswith('estoque') }}">
+        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        Equipamentos</a>
+      {% if usuario.pode_cofre %}
+      <a href="{{ url_for('cofre.lista') }}" class="{{ 'ativo' if ep.startswith('cofre') }}">
+        <svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.5"/></svg>
+        Cofre de senhas</a>
+      {% endif %}
+      {% if usuario.e_admin %}
+      <div class="grupo">Administração</div>
+      <a href="{{ url_for('admin.usuarios') }}" class="{{ 'ativo' if ep.startswith('admin.usuario') }}">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg>
+        Usuários</a>
+      <a href="{{ url_for('admin.unidades') }}" class="{{ 'ativo' if ep == 'admin.unidades' }}">
+        <svg viewBox="0 0 24 24"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M2 21h20M8 8h3M8 12h3M8 16h3"/></svg>
+        Unidades</a>
+      <a href="{{ url_for('admin.auditoria') }}" class="{{ 'ativo' if ep == 'admin.auditoria' }}">
+        <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+        Auditoria</a>
+      <a href="{{ url_for('admin.backups') }}" class="{{ 'ativo' if ep.startswith('admin.backup') }}">
+        <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="2.5"/><path d="M4 5.5v13c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-13M4 12c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5"/></svg>
+        Backup</a>
+      {% endif %}
+    </nav>
+    <div class="perfil">
+      <div class="avatar">{{ usuario.iniciais }}</div>
+      <div class="info">
+        <strong>{{ usuario.nome }}</strong>
+        <span>{{ usuario.perfil_nome }}</span>
+      </div>
+      <div>
+        <a href="{{ url_for('auth.trocar_senha') }}" title="Trocar minha senha">Senha</a><br>
+        <a href="{{ url_for('auth.logout') }}">Sair</a>
+      </div>
+    </div>
+  </aside>
+  <main class="conteudo">
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat, m in msgs %}<div class="msg msg-{{ cat }}">{{ m }}</div>{% endfor %}
+    {% endwith %}
+    {% block conteudo %}{% endblock %}
+  </main>
+</div>
+{% else %}
+  {% block publico %}{% endblock %}
+{% endif %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

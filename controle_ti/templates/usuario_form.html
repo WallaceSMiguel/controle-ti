@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import erros_form %}
+{% block titulo %}{{ 'Editar usuário' if alvo else 'Novo usuário' }}{% endblock %}
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('admin.usuarios') }}">← Usuários</a>
+  <h1>{{ alvo.nome if alvo else 'Novo usuário' }}</h1></div></div>
+{{ erros_form(erros) }}
+<form method="post" class="painel" style="max-width:860px" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="secao-form"><h3>Identificação</h3><div class="campos">
+    <div class="campo"><label for="nome">Nome</label><input type="text" id="nome" name="nome" value="{{ u.nome or '' }}" required></div>
+    <div class="campo"><label for="usuario">Usuário de acesso</label><input type="text" id="usuario" name="usuario" value="{{ u.usuario or '' }}" required></div>
+    <div class="campo" style="justify-content:flex-end"><label class="check"><input type="checkbox" name="ativo" {{ 'checked' if u.ativo }}> Usuário ativo</label></div>
+  </div></div>
+  <div class="secao-form"><h3>Permissões</h3><div class="campos">
+    <div class="campo"><label for="perfil">Perfil</label>
+      <select id="perfil" name="perfil">{% for k, v in perfis.items() %}<option value="{{ k }}" {{ 'selected' if u.perfil == k }}>{{ v }}</option>{% endfor %}</select></div>
+    <div class="campo" style="justify-content:flex-end"><label class="check"><input type="checkbox" name="acesso_cofre" {{ 'checked' if u.acesso_cofre }}> Acesso ao cofre de senhas</label></div>
+    <div class="campo" style="justify-content:flex-end"><label class="check"><input type="checkbox" id="todas_unidades" name="todas_unidades" {{ 'checked' if u.todas_unidades }}> Todas as unidades</label></div>
+    <div class="campo largo"><label>Unidades liberadas</label>
+      <div class="check-lista" id="lista-unidades">
+        {% for un in unidades %}<label class="check"><input type="checkbox" name="unidades" value="{{ un.id }}" {{ 'checked' if un.id in u.unidades }}> {{ un.nome }}{% if not un.ativa %} (inativa){% endif %}</label>{% endfor %}
+      </div>
+      <small>Administradores sempre veem todas as unidades.</small></div>
+  </div></div>
+  <div class="secao-form"><h3>{{ 'Redefinir senha' if alvo else 'Senha temporária' }}</h3><div class="campos">
+    <div class="campo"><label for="senha">{{ 'Nova senha temporária' if alvo else 'Senha temporária' }}</label>
+      <input type="password" id="senha" name="senha" autocomplete="new-password" {{ '' if alvo else 'required' }} minlength="8"></div>
+    <div class="campo"><label for="confirmacao">Confirme</label>
+      <input type="password" id="confirmacao" name="confirmacao" autocomplete="new-password"></div>
+    <div class="campo largo"><small>{% if alvo %}Deixe em branco para manter a senha atual. Ao redefinir, o usuário troca a senha no próximo acesso.{% else %}O usuário cria a própria senha no primeiro acesso.{% endif %}</small></div>
+  </div></div>
+  <div class="form-rodape">
+    <a class="btn" href="{{ url_for('admin.usuarios') }}">Cancelar</a>
+    <button class="btn btn-primario" type="submit">Salvar usuário</button>
+  </div>
+</form>
+{% endblock %}

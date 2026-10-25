@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block titulo %}Backup{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div><h1>Backup</h1><p>Um backup automático é feito ao iniciar o servidor e a cada 24 horas.</p></div>
+  <div class="acoes"><form method="post"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-primario" type="submit">Fazer backup agora</button></form></div>
+</div>
+
+<div class="msg msg-aviso">Restaurar volta <strong>todo</strong> o sistema para a data do backup: equipamentos, senhas, usuários e auditoria. O que foi feito depois some, e todos precisam entrar de novo com a senha que valia naquela data. Antes de restaurar, o sistema guarda uma cópia do estado atual, para você poder desfazer.</div>
+
+<section class="painel">
+  <div class="painel-cab"><div><h2>Cópias guardadas</h2><p>{{ pasta }}</p></div></div>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Data</th><th>Conteúdo</th><th>Tamanho</th><th></th></tr></thead>
+    <tbody>
+    {% for a in lista %}
+      <tr>
+        <td class="nowrap"><strong>{{ a.data|databr(true) }}</strong>
+          <span class="sub">{{ a.nome }}</span>
+          {% if a.tipo == 'antes' %}<span class="tag tag-laranja">Estado antes de uma restauração</span>
+          {% elif a.tipo == 'enviado' %}<span class="tag">Arquivo enviado</span>{% endif %}</td>
+        <td>{% if a.valido %}{{ a.equipamentos }} equipamentos · {{ a.cofre }} senhas no cofre · {{ a.usuarios }} usuários
+              <span class="sub">Última atividade: {{ a.ultima_atividade|databr(true) }}</span>
+              {% if a.mesma is false %}<span class="tag tag-laranja">Outra instalação</span>{% endif %}
+            {% else %}<span class="resultado-erro">{{ a.erro }}</span>{% endif %}</td>
+        <td class="nowrap">{% if a.tamanho >= 1048576 %}{{ ((a.tamanho / 1048576)|round(1)|string).replace(".", ",") }} MB{% else %}{{ ((a.tamanho / 1024)|round(0)|int) }} KB{% endif %}</td>
+        <td class="num">
+          <div class="acoes-linha">
+            <a class="btn btn-peq" href="{{ url_for('admin.backup_baixar', nome=a.nome) }}">Baixar</a>
+            {% if a.valido %}
+            <details class="restaurar">
+              <summary class="btn btn-peq">Restaurar</summary>
+              <form method="post" action="{{ url_for('admin.backup_restaurar', nome=a.nome) }}" class="caixa-restaurar">
+                <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                <p>Voltar o sistema para <strong>{{ a.data|databr(true) }}</strong>? Digite <strong>RESTAURAR</strong> para confirmar.</p>
+                <div class="com-botao">
+                  <input type="text" name="confirmacao" autocomplete="off" aria-label="Digite RESTAURAR" placeholder="RESTAURAR" required>
+                  <button class="btn btn-perigo" type="submit">Restaurar este backup</button>
+                </div>
+              </form>
+            </details>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="4" class="vazio">Nenhum backup ainda. Use “Fazer backup agora”.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="painel" style="max-width:860px">
+  <div class="painel-cab"><div><h2>Restaurar de um arquivo</h2><p>Use um backup baixado antes ou copiado de outro lugar (arquivo .db).</p></div></div>
+  <form method="post" action="{{ url_for('admin.backup_enviar') }}" enctype="multipart/form-data" class="painel-corpo" data-carregando="Restaurando…">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="campos">
+      <div class="campo"><label for="arquivo">Arquivo de backup</label><input type="file" id="arquivo" name="arquivo" accept=".db" required></div>
+      <div class="campo"><label for="confirmacao">Digite RESTAURAR para confirmar</label><input type="text" id="confirmacao" name="confirmacao" autocomplete="off" required></div>
+      <div class="campo" style="justify-content:flex-end"><button class="btn btn-perigo" type="submit" data-carregando-btn>Enviar e restaurar</button></div>
+    </div>
+  </form>
+</section>
+{% endblock %}

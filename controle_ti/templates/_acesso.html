@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block publico %}
+<div class="acesso">
+  <section class="acesso-marca">
+    <img src="{{ url_for('static', filename='logo.svg') }}" alt="Logo Valorização">
+    <h1>Valorização</h1>
+    <div class="faixa"></div>
+    <p>Controle de TI: equipamentos, senhas dos computadores e cofre de senhas dos sistemas.</p>
+  </section>
+  <section class="acesso-form">
+    {% block form %}{% endblock %}
+  </section>
+</div>
+{% endblock %}

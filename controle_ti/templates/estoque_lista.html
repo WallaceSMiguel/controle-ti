@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block titulo %}Equipamentos{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div><h1>Equipamentos</h1><p>{{ itens|length }} encontrado{{ 's' if itens|length != 1 }}</p></div>
+  <div class="acoes">
+    <a class="btn" href="{{ url_for('estoque.exportar', **request.args) }}">
+      <svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"/></svg>Exportar para Excel</a>
+    {% if usuario.pode_editar_estoque %}<a class="btn" href="{{ url_for('estoque.importar_lote') }}">Importar do msinfo32</a>
+    <a class="btn btn-primario" href="{{ url_for('estoque.novo') }}">Cadastrar equipamento</a>{% endif %}
+  </div>
+</div>
+<section class="painel">
+  <form class="filtros" method="get">
+    <input class="busca" type="search" name="q" value="{{ f.q }}" placeholder="Buscar por modelo, série, patrimônio, hostname, processador, MAC…">
+    <select name="unidade" aria-label="Unidade"><option value="">Todas as unidades</option>
+      {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if f.unidade == u.id|string }}>{{ u.nome }}</option>{% endfor %}</select>
+    <select name="tipo" aria-label="Tipo"><option value="">Todos os tipos</option>
+      {% for t in tipos %}<option {{ 'selected' if f.tipo == t }}>{{ t }}</option>{% endfor %}</select>
+    <select name="status" aria-label="Status"><option value="">Ativos (sem baixados)</option>
+      {% for s in status %}<option {{ 'selected' if f.status == s }}>{{ s }}</option>{% endfor %}</select>
+    <select name="alerta" aria-label="Pontos de atenção"><option value="">Sem filtro de configuração</option>
+      {% for k, v in alertas.items() %}<option value="{{ k }}" {{ 'selected' if f.alerta == k }}>{{ v[0] }}</option>{% endfor %}</select>
+    <button class="btn" type="submit">Filtrar</button>
+    {% if f %}<a class="btn" href="{{ url_for('estoque.lista') }}">Limpar</a>{% endif %}
+  </form>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Equipamento</th><th>Configuração</th><th>Patrimônio / Série</th><th>Hostname</th><th>Responsável</th><th>Unidade</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for e in itens %}
+      <tr data-href="{{ url_for('estoque.detalhe', eid=e.id) }}">
+        <td><strong>{{ e.tipo }}</strong><span class="sub">{{ e.marca or '' }} {{ e.modelo or '' }}</span></td>
+        <td>{% set cfg = hw_resumo(e) %}{% if cfg %}<span class="config">{{ cfg }}</span><span class="sub">{{ e.sistema_operacional or '' }}</span>{% else %}<span class="sub">—</span>{% endif %}</td>
+        <td>{{ e.patrimonio or '—' }}<span class="sub">{{ e.numero_serie or '' }}</span></td>
+        <td class="nowrap">{{ e.hostname or '—' }}</td>
+        <td>{{ e.responsavel or '—' }}<span class="sub">{{ e.setor or '' }}</span></td>
+        <td>{{ e.unidade }}</td>
+        <td>{{ status_badge(e.status) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7"><div class="vazio"><strong>Nenhum equipamento encontrado</strong>
+        {% if f %}Ajuste os filtros ou limpe a busca.{% elif usuario.pode_editar_estoque %}Cadastre o primeiro equipamento para começar o inventário.{% endif %}</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

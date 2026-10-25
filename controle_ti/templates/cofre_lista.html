@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import senha %}
+{% block titulo %}Cofre de senhas{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div><h1>Cofre de senhas</h1><p>Acessos dos sistemas. Cada visualização ou cópia fica registrada na auditoria.</p></div>
+  <div class="acoes"><a class="btn btn-primario" href="{{ url_for('cofre.novo') }}">Nova senha</a></div>
+</div>
+<section class="painel">
+  <form class="filtros" method="get">
+    <input class="busca" type="search" name="q" value="{{ f.q }}" placeholder="Buscar por sistema, usuário ou endereço…">
+    <select name="unidade" aria-label="Unidade"><option value="">Todas as unidades</option>
+      <option value="geral" {{ 'selected' if f.unidade == 'geral' }}>Geral (todas as unidades)</option>
+      {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if f.unidade == u.id|string }}>{{ u.nome }}</option>{% endfor %}</select>
+    <select name="categoria" aria-label="Categoria"><option value="">Todas as categorias</option>
+      {% for c in categorias %}<option {{ 'selected' if f.categoria == c }}>{{ c }}</option>{% endfor %}</select>
+    <button class="btn" type="submit">Filtrar</button>
+    {% if f %}<a class="btn" href="{{ url_for('cofre.lista') }}">Limpar</a>{% endif %}
+  </form>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Sistema</th><th>Usuário</th><th>Senha</th><th>Unidade</th><th>Última troca</th><th></th></tr></thead>
+    <tbody>
+    {% for i in itens %}
+      <tr>
+        <td><strong>{{ i.sistema }}</strong>
+          <span class="sub">{% if i.categoria %}{{ i.categoria }}{% endif %}{% if i.url %}{{ ' · ' if i.categoria }}<a href="{{ i.url }}" target="_blank" rel="noopener noreferrer">abrir site</a>{% endif %}</span></td>
+        <td>{{ i.usuario or '—' }}</td>
+        <td>{{ senha(url_for('cofre.revelar', iid=i.id)) }}</td>
+        <td>{% if i.unidade %}{{ i.unidade }}{% else %}<span class="tag">Geral</span>{% endif %}</td>
+        <td><span class="{{ 'alerta-idade' if i.idade > 180 }}">{{ i.senha_alterada_em|databr }}</span><span class="sub">{{ i.atualizado_por }}</span></td>
+        <td class="num"><a class="btn btn-peq" href="{{ url_for('cofre.editar', iid=i.id) }}">Editar</a></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="6"><div class="vazio"><strong>Nenhuma senha no cofre</strong>
+        {% if f %}Ajuste os filtros ou limpe a busca.{% else %}Guarde aqui os acessos dos sistemas, portais e e-mails do escritório.{% endif %}</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

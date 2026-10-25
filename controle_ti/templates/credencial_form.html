@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import erros_form, campo_senha_form %}
+{% block titulo %}Senha do computador{% endblock %}
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('estoque.detalhe', eid=e.id) }}">← {{ e.tipo }} {{ e.hostname or e.modelo or '' }}</a>
+  <h1>{{ 'Editar senha' if cred else 'Adicionar senha' }}</h1>
+  <p>{{ e.unidade }}{% if e.patrimonio %} · Patrimônio {{ e.patrimonio }}{% endif %}</p></div>
+  {% if cred %}
+  <div class="acoes"><form method="post" action="{{ url_for('estoque.cred_excluir', cid=cred.id) }}" data-confirmar="Excluir esta credencial?">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-perigo" type="submit">Excluir</button></form></div>
+  {% endif %}
+</div>
+{{ erros_form(erros) }}
+<form method="post" class="painel" style="max-width:760px" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="secao-form"><div class="campos">
+    <div class="campo"><label for="tipo">Tipo</label>
+      <select id="tipo" name="tipo">{% for t in tipos %}<option {{ 'selected' if c.tipo == t }}>{{ t }}</option>{% endfor %}</select></div>
+    <div class="campo"><label for="usuario">Usuário</label><input type="text" id="usuario" name="usuario" value="{{ c.usuario or '' }}" placeholder="Administrador, .\suporte…"></div>
+    {{ campo_senha_form('senha', 'Nova senha' if cred else 'Senha', not cred, 'Deixe em branco para manter a senha atual.' if cred else '') }}
+    <div class="campo largo"><label for="observacoes">Observações</label><input type="text" id="observacoes" name="observacoes" value="{{ c.observacoes or '' }}"></div>
+  </div></div>
+  <div class="form-rodape">
+    <a class="btn" href="{{ url_for('estoque.detalhe', eid=e.id) }}">Cancelar</a>
+    <button class="btn btn-primario" type="submit">Salvar senha</button>
+  </div>
+</form>
+{% endblock %}

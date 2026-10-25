@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% macro corpo() %}
+<div class="erro-pagina">
+  <div class="codigo">{{ codigo }}</div>
+  <h1>{{ titulo }}</h1>
+  <p>{{ msg or ('Seu perfil não tem permissão para esta área.' if codigo == 403 else 'Verifique o endereço ou volte ao painel.') }}</p>
+  <a class="btn" href="{{ url_for('painel.inicio') }}">Voltar ao painel</a>
+</div>
+{% endmacro %}
+{% block conteudo %}{{ corpo() }}{% endblock %}
+{% block publico %}{{ corpo() }}{% endblock %}

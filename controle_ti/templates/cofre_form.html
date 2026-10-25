@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_macros.html" import erros_form, campo_senha_form, senha %}
+{% block titulo %}{{ 'Editar senha do cofre' if item else 'Nova senha no cofre' }}{% endblock %}
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('cofre.lista') }}">← Cofre de senhas</a>
+  <h1>{{ item.sistema if item else 'Nova senha no cofre' }}</h1>
+  {% if item %}<p>Senha trocada em {{ item.senha_alterada_em|databr }} · última edição por {{ item.atualizado_por }}</p>{% endif %}</div>
+  {% if item and usuario.e_admin %}
+  <div class="acoes"><form method="post" action="{{ url_for('cofre.excluir', iid=item.id) }}" data-confirmar="Excluir {{ item.sistema }} do cofre? Esta ação não pode ser desfeita.">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-perigo" type="submit">Excluir</button></form></div>
+  {% endif %}
+</div>
+{{ erros_form(erros) }}
+<form method="post" class="painel" style="max-width:860px" autocomplete="off">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="secao-form"><div class="campos">
+    <div class="campo"><label for="sistema">Sistema</label><input type="text" id="sistema" name="sistema" value="{{ c.sistema or '' }}" required placeholder="SIEG, e-CAC, Domínio…"></div>
+    <div class="campo"><label for="categoria">Categoria</label>
+      <input type="text" id="categoria" name="categoria" list="categorias" value="{{ c.categoria or '' }}">
+      <datalist id="categorias">{% for cat in categorias %}<option value="{{ cat }}">{% endfor %}</datalist></div>
+    <div class="campo"><label for="unidade_id">Unidade</label>
+      <select id="unidade_id" name="unidade_id"><option value="">Geral (todas as unidades)</option>
+        {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if c.unidade_id|string == u.id|string }}>{{ u.nome }}</option>{% endfor %}</select></div>
+    <div class="campo"><label for="url">Endereço (site)</label><input type="text" id="url" name="url" value="{{ c.url or '' }}" placeholder="https://"></div>
+    <div class="campo"><label for="usuario">Usuário / login</label><input type="text" id="usuario" name="usuario" value="{{ c.usuario or '' }}"></div>
+    {% if item %}
+    <div class="campo"><label>Senha atual</label>{{ senha(url_for('cofre.revelar', iid=item.id)) }}</div>
+    {% endif %}
+    {{ campo_senha_form('senha', 'Nova senha' if item else 'Senha', not item, 'Deixe em branco para manter a senha atual.' if item else '') }}
+    <div class="campo largo"><label for="notas">Notas protegidas</label>
+      <textarea id="notas" name="notas" placeholder="Perguntas de segurança, códigos de backup do 2FA, contatos do suporte…">{{ c.notas or '' }}</textarea>
+      <small>As notas também ficam criptografadas.</small></div>
+  </div></div>
+  <div class="form-rodape">
+    <a class="btn" href="{{ url_for('cofre.lista') }}">Cancelar</a>
+    <button class="btn btn-primario" type="submit">Salvar no cofre</button>
+  </div>
+</form>
+{% endblock %}

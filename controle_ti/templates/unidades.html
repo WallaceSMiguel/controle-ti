@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Unidades{% endblock %}
+{% block conteudo %}
+<div class="topo"><div><h1>Unidades</h1><p>Unidades inativas somem dos cadastros novos, mas mantêm o histórico.</p></div></div>
+<section class="painel" style="max-width:860px">
+  <form method="post" class="filtros">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="nova">
+    <input class="busca" type="text" name="nome" placeholder="Nome da nova unidade" required>
+    <button class="btn btn-primario" type="submit">Adicionar unidade</button>
+  </form>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Nome</th><th class="num">Equipamentos</th><th class="num">Senhas no cofre</th><th>Situação</th><th></th></tr></thead>
+    <tbody>
+    {% for u in lista %}
+      <tr>
+        <td><form method="post" style="display:flex;gap:6px">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="renomear"><input type="hidden" name="id" value="{{ u.id }}">
+          <input type="text" name="nome" value="{{ u.nome }}" aria-label="Nome da unidade" required><button class="btn btn-peq" type="submit">Renomear</button></form></td>
+        <td class="num">{{ u.equipamentos }}</td><td class="num">{{ u.cofre }}</td>
+        <td>{% if u.ativa %}<span class="badge st-em-uso">Ativa</span>{% else %}<span class="badge st-baixado">Inativa</span>{% endif %}</td>
+        <td class="num"><form method="post">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="acao" value="alternar"><input type="hidden" name="id" value="{{ u.id }}">
+          <button class="btn btn-peq" type="submit">{{ 'Desativar' if u.ativa else 'Reativar' }}</button></form></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% macro status_badge(s) -%}
+{%- set cls = {'Em uso':'em-uso','Em estoque':'em-estoque','Em manutenção':'em-manutencao','Emprestado':'emprestado','Baixado':'baixado'} -%}
+<span class="badge st-{{ cls.get(s, 'baixado') }}">{{ s }}</span>
+{%- endmacro %}
+
+{% macro senha(url) -%}
+<span class="senha-campo">
+  <span class="senha-valor"><span class="texto pontos">••••••••••</span><span class="barra"></span></span>
+  <button type="button" class="icone-btn" data-revelar="{{ url }}" aria-label="Mostrar senha" title="Mostrar por 20 s">
+    <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+  </button>
+  <button type="button" class="icone-btn" data-copiar="{{ url }}" aria-label="Copiar senha" title="Copiar">
+    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+  </button>
+</span>
+{%- endmacro %}
+
+{% macro erros_form(erros) -%}
+{% if erros %}<div class="msg msg-erro">Corrija antes de salvar:<ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{%- endmacro %}
+
+{% macro campo_senha_form(id, rotulo, obrig, ajuda='') -%}
+<div class="campo">
+  <label for="{{ id }}">{{ rotulo }}</label>
+  <div class="com-botao">
+    <input type="password" id="{{ id }}" name="senha" autocomplete="new-password" {{ 'required' if obrig }}>
+    <button type="button" class="btn" data-mostrar="#{{ id }}" title="Mostrar/ocultar">
+      <svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+    </button>
+    <button type="button" class="btn" data-gerar="#{{ id }}">Gerar</button>
+  </div>
+  {% if ajuda %}<small>{{ ajuda }}</small>{% endif %}
+</div>
+{%- endmacro %}

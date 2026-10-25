@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block titulo %}Importar do msinfo32{% endblock %}
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('estoque.lista') }}">← Equipamentos</a>
+  <h1>Importar do msinfo32</h1>
+  <p>Envie os arquivos de vários computadores de uma vez. Quem já está cadastrado (pelo hostname) tem a configuração atualizada; os demais são cadastrados.</p></div></div>
+
+{% if resultados %}
+<section class="painel">
+  <div class="painel-cab"><div><h2>Resultado</h2>
+    {% set n_novo = resultados|selectattr('situacao', 'equalto', 'novo')|list|length %}
+    {% set n_atu = resultados|selectattr('situacao', 'equalto', 'atualizado')|list|length %}
+    {% set n_err = resultados|selectattr('situacao', 'equalto', 'erro')|list|length %}
+    <p>{{ n_novo }} cadastrados · {{ n_atu }} atualizados · {{ n_err }} com erro</p></div></div>
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Arquivo</th><th>Computador</th><th>Configuração</th><th>Situação</th></tr></thead>
+    <tbody>
+    {% for r in resultados %}
+      <tr {% if r.eid %}data-href="{{ url_for('estoque.detalhe', eid=r.eid) }}"{% endif %}>
+        <td>{{ r.arquivo }}</td>
+        <td>{% if r.eid %}<a href="{{ url_for('estoque.detalhe', eid=r.eid) }}">{{ r.hostname or 'Abrir' }}</a>{% else %}—{% endif %}</td>
+        <td><span class="config">{{ r.resumo or '' }}</span></td>
+        <td><span class="resultado-{{ 'ok' if r.situacao == 'atualizado' else r.situacao }}">{{ {'novo':'Cadastrado','atualizado':'Atualizado','erro':'Erro'}[r.situacao] }}</span>
+            <span class="sub">{{ r.msg }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<div class="grade-2-1" style="margin-top:18px">
+  <form method="post" enctype="multipart/form-data" class="painel" data-carregando="Importando…">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="secao-form"><div class="campos">
+      <div class="campo"><label for="unidade_id">Unidade dos computadores novos</label>
+        <select id="unidade_id" name="unidade_id" required><option value="">Selecione…</option>
+          {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if escolha.unidade_id == u.id|string }}>{{ u.nome }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="status">Status dos novos</label>
+        <select id="status" name="status">{% for s in status %}<option {{ 'selected' if escolha.status == s }}>{{ s }}</option>{% endfor %}</select></div>
+      <div class="campo largo"><label for="arquivos">Arquivos do msinfo32 (.nfo ou .txt)</label>
+        <input type="file" id="arquivos" name="arquivos" accept=".nfo,.txt" multiple required>
+        <small>Até 100 arquivos por vez. Computadores já cadastrados mantêm a unidade e o status atuais.</small></div>
+    </div></div>
+    <div class="form-rodape"><button class="btn btn-primario" type="submit" data-carregando-btn>Importar arquivos</button></div>
+  </form>
+
+  <section class="painel">
+    <div class="painel-cab"><h2>Como gerar os arquivos</h2></div>
+    <div class="painel-corpo passos">
+      <p><strong>Em um computador:</strong> tecle <span class="mono">Win + R</span>, digite <span class="mono">msinfo32</span> e use <em>Arquivo › Salvar</em>.</p>
+      <p><strong>Em vários de uma vez:</strong> copie <span class="mono">coletar_msinfo32.bat</span> (pasta <span class="mono">ferramentas</span> do sistema) para uma pasta compartilhada e execute em cada máquina. Ele grava <span class="mono">NOME-DO-PC.nfo</span> na mesma pasta.</p>
+      <p class="sub">O msinfo32 leva de 30 segundos a 2 minutos para gerar o arquivo.</p>
+    </div>
+  </section>
+</div>
+{% endblock %}

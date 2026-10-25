@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block titulo %}Usuários{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div><h1>Usuários</h1><p>Equipe de TI com acesso ao sistema</p></div>
+  <div class="acoes"><a class="btn btn-primario" href="{{ url_for('admin.usuario_novo') }}">Novo usuário</a></div>
+</div>
+<section class="painel">
+  <div class="tabela-wrap"><table>
+    <thead><tr><th>Nome</th><th>Perfil</th><th>Unidades</th><th>Cofre</th><th>Último acesso</th><th>Situação</th></tr></thead>
+    <tbody>
+    {% for u in lista %}
+      <tr data-href="{{ url_for('admin.usuario_editar', uid=u.id) }}">
+        <td><strong>{{ u.nome }}</strong><span class="sub">{{ u.usuario }}</span></td>
+        <td>{{ perfis[u.perfil] }}</td>
+        <td>{% if u.perfil == 'admin' or u.todas_unidades %}Todas{% else %}{{ (unidades.get(u.id) or ['—'])|join(', ') }}{% endif %}</td>
+        <td>{% if u.perfil == 'admin' or u.acesso_cofre %}<span class="tag tag-laranja">Sim</span>{% else %}<span class="tag">Não</span>{% endif %}</td>
+        <td>{{ u.ultimo_login|databr(true) }}</td>
+        <td>{% if not u.ativo %}<span class="badge st-baixado">Inativo</span>{% elif u.trocar_senha %}<span class="badge st-em-manutencao">Aguardando 1º acesso</span>{% else %}<span class="badge st-em-uso">Ativo</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+<section class="painel">
+  <div class="painel-corpo">
+    <h3>O que cada perfil pode fazer</h3>
+    <div class="tabela-wrap" style="margin-top:10px"><table>
+      <thead><tr><th></th><th>Ver estoque</th><th>Editar estoque</th><th>Senhas dos PCs</th><th>Cofre</th><th>Usuários, auditoria e backup</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Administrador</strong></td><td>Todas as unidades</td><td>Sim</td><td>Sim</td><td>Sim</td><td>Sim</td></tr>
+        <tr><td><strong>Técnico</strong></td><td>Unidades liberadas</td><td>Sim</td><td>Sim</td><td>Se liberado</td><td>Não</td></tr>
+        <tr><td><strong>Consulta</strong></td><td>Unidades liberadas</td><td>Não</td><td>Não</td><td>Se liberado</td><td>Não</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+{% endblock %}

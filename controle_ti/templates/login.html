@@ -1,0 +1,19 @@
+{% extends "_acesso.html" %}
+{% block titulo %}Entrar{% endblock %}
+{% block form %}
+<h2>Entrar</h2>
+<p>Use seu usuário da equipe de TI.</p>
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for cat, m in msgs %}<div class="msg msg-{{ cat }}">{{ m }}</div>{% endfor %}
+{% endwith %}
+{% if erro %}<div class="msg msg-erro">{{ erro }}</div>
+{% elif expirou and not get_flashed_messages() %}<div class="msg msg-aviso">Entre novamente para continuar. Por segurança, a sessão encerra após {{ timeout_min }} minutos sem uso.</div>{% endif %}
+<form method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="campo"><label for="usuario">Usuário</label>
+    <input type="text" id="usuario" name="usuario" value="{{ usuario_txt }}" autocomplete="username" required autofocus></div>
+  <div class="campo"><label for="senha">Senha</label>
+    <input type="password" id="senha" name="senha" autocomplete="current-password" required></div>
+  <button class="btn btn-primario" type="submit">Entrar</button>
+</form>
+{% endblock %}

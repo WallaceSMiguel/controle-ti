@@ -1,0 +1,20 @@
+{% extends "_acesso.html" %}
+{% block titulo %}Instalação{% endblock %}
+{% block form %}
+<h2>Primeiro acesso</h2>
+<p>Crie o administrador do sistema. As unidades Del Castilho (Matriz), Caxias e Barra serão cadastradas automaticamente.</p>
+{% if erro %}<div class="msg msg-erro">{{ erro }}</div>{% endif %}
+<form method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="campo"><label for="nome">Seu nome</label>
+    <input type="text" id="nome" name="nome" value="{{ request.form.nome }}" required autofocus></div>
+  <div class="campo"><label for="usuario">Usuário de acesso</label>
+    <input type="text" id="usuario" name="usuario" value="{{ request.form.usuario }}" autocomplete="username" required></div>
+  <div class="campo"><label for="senha">Senha</label>
+    <input type="password" id="senha" name="senha" autocomplete="new-password" minlength="8" required>
+    <small>Mínimo de 8 caracteres. Ela protege todas as senhas guardadas, então use uma senha longa.</small></div>
+  <div class="campo"><label for="confirmacao">Confirme a senha</label>
+    <input type="password" id="confirmacao" name="confirmacao" autocomplete="new-password" required></div>
+  <button class="btn btn-primario" type="submit">Criar administrador</button>
+</form>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, senha %}
+{% block titulo %}{{ e.tipo }} {{ e.modelo or '' }}{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div><a class="voltar" href="{{ url_for('estoque.lista') }}">← Equipamentos</a>
+    <h1>{{ e.tipo }} {{ e.marca or '' }} {{ e.modelo or '' }}</h1>
+    <p>{{ status_badge(e.status) }}&nbsp; {{ e.unidade }}{% if e.hostname %} · {{ e.hostname }}{% endif %}</p></div>
+  <div class="acoes">
+    {% if usuario.pode_editar_estoque %}<a class="btn btn-primario" href="{{ url_for('estoque.editar', eid=e.id) }}">Editar</a>{% endif %}
+    {% if usuario.e_admin %}
+    <form method="post" action="{{ url_for('estoque.excluir', eid=e.id) }}" data-confirmar="Excluir este equipamento, as senhas e o histórico dele? Para tirar de uso, prefira mudar o status para Baixado.">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-perigo" type="submit">Excluir</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grade-2-1">
+  <div>
+    {% set computador = e.tipo in ('Desktop', 'Notebook', 'Servidor') %}
+    {% if hw or computador %}
+    <section class="painel">
+      <div class="painel-cab"><div><h2>Configuração</h2>
+        {% if hw %}<p>{{ hw.origem or 'Cadastro manual' }} · atualizada em {{ hw.atualizado_em|databr }} por {{ hw.atualizado_por }}</p>{% endif %}</div>
+        {% if usuario.pode_editar_estoque %}
+        <form method="post" action="{{ url_for('estoque.atualizar_msinfo', eid=e.id) }}" enctype="multipart/form-data" class="form-msinfo" data-carregando="Lendo…">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label class="btn btn-peq"><span data-carregando-btn>{{ 'Atualizar pelo msinfo32' if hw else 'Enviar msinfo32' }}</span>
+            <input type="file" name="msinfo" accept=".nfo,.txt" class="oculto" data-auto="#enviar-msinfo"></label>
+          <button type="submit" id="enviar-msinfo" class="oculto" tabindex="-1" aria-hidden="true"></button>
+        </form>
+        {% endif %}
+      </div>
+      {% if hw %}
+      {% set w10 = hw.sistema_operacional and (hw.sistema_operacional.startswith('Windows 10') or hw.sistema_operacional.startswith('Windows 8') or hw.sistema_operacional.startswith('Windows 7')) %}
+      <div class="hw-grade">
+        <div class="hw-item">
+          <div class="hw-ic"><svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg></div>
+          <div><span class="hw-rot">Processador</span>
+            <strong title="{{ hw.processador or '' }}">{{ processador_curto(hw.processador) or '—' }}</strong>
+            <span class="hw-sub">{% if hw.nucleos %}{{ hw.nucleos }} núcleos · {{ hw.threads or hw.nucleos }} threads{% endif %}{% if hw.frequencia %} · {{ hw.frequencia.replace('.', ',').replace('GHz', ' GHz') }}{% endif %}</span></div>
+        </div>
+        <div class="hw-item">
+          <div class="hw-ic"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="10" rx="1.5"/><path d="M6 17v3M10 17v3M14 17v3M18 17v3M6 10v4M10 10v4M14 10v4M18 10v4"/></svg></div>
+          <div><span class="hw-rot">Memória</span>
+            <strong>{{ memoria_txt(hw.memoria_gb) }}</strong>
+            {% if hw.memoria_gb and hw.memoria_gb <= 4 %}<span class="tag tag-laranja">Pouca memória</span>{% endif %}</div>
+        </div>
+        <div class="hw-item">
+          <div class="hw-ic"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></div>
+          <div><span class="hw-rot">Armazenamento</span>
+            <strong>{{ hw.armazenamento or '—' }}</strong>
+            {% for d in hw.discos %}<span class="hw-sub">{{ d.modelo }}</span>{% endfor %}</div>
+        </div>
+        <div class="hw-item">
+          <div class="hw-ic"><svg viewBox="0 0 24 24"><path d="M3 5.5 10 4.5v7H3zM11 4.3 21 3v8.5H11zM3 12.5h7v7l-7-1zM11 12.5h10V21l-10-1.3z"/></svg></div>
+          <div><span class="hw-rot">Sistema operacional</span>
+            <strong>{{ hw.sistema_operacional or '—' }}</strong>
+            <span class="hw-sub">{{ hw.versao_so or '' }}{% if hw.arquitetura and '64' in hw.arquitetura %} · 64 bits{% endif %}</span>
+            {% if w10 %}<span class="tag tag-laranja">Sem suporte da Microsoft</span>{% endif %}</div>
+        </div>
+      </div>
+      {% if hw.unidades %}
+      <div class="hw-discos">
+        {% for u in hw.unidades %}
+        <div class="hw-disco">
+          <div class="hw-disco-cab"><strong>{{ u.letra }}</strong>
+            <span>{{ gb_legivel(u.livre) }} livres de {{ gb_legivel(u.bytes) }}</span>
+            <span class="{{ 'alerta-idade' if (u.uso or 0) >= 90 }}">{{ u.uso }}% ocupado</span></div>
+          <div class="barra-uso"><span style="width: {{ u.uso or 0 }}%" class="{{ 'cheio' if (u.uso or 0) >= 90 else 'medio' if (u.uso or 0) >= 75 }}"></span></div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="painel-corpo hw-mais"><dl class="ficha">
+        {% if hw.rede %}<div><dt>Rede</dt><dd>{% for r in hw.rede %}{{ r.ip or 'Sem IP' }}<span class="hw-sub"><span class="mono">{{ r.mac }}</span> · {{ r.nome }}</span>{% endfor %}</dd></div>{% endif %}
+        {% if hw.video %}<div><dt>Vídeo</dt><dd>{% for v in hw.video %}{{ v.nome }}{% if v.resolucao %}<span class="hw-sub">{{ v.resolucao.replace(' x 60 hertz', '').replace(' hertz', ' Hz') }}</span>{% endif %}{% endfor %}</dd></div>{% endif %}
+        {% if hw.placa_mae or hw.bios %}<div><dt>Placa-mãe e BIOS</dt><dd>{{ hw.placa_mae or '—' }}<span class="hw-sub">{{ hw.bios or '' }}{% if hw.bios_modo %} · {{ hw.bios_modo }}{% endif %}{% if hw.secure_boot %} · Inicialização segura: {{ hw.secure_boot.replace('On', 'ativada').replace('Off', 'desativada') }}{% endif %}</span></dd></div>{% endif %}
+        {% if hw.usuario_logado %}<div><dt>Último login no Windows</dt><dd>{{ hw.usuario_logado }}</dd></div>{% endif %}
+      </dl></div>
+      {% else %}
+      <div class="vazio"><strong>Configuração ainda não cadastrada</strong>
+        Envie o arquivo do msinfo32 deste computador para ver processador, memória, discos e sistema operacional.</div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="painel">
+      <div class="painel-cab"><h2>Dados do equipamento</h2></div>
+      <div class="painel-corpo"><dl class="ficha">
+        <div><dt>Patrimônio</dt><dd>{{ e.patrimonio or '—' }}</dd></div>
+        <div><dt>Número de série</dt><dd>{{ e.numero_serie or '—' }}</dd></div>
+        <div><dt>Hostname</dt><dd>{{ e.hostname or '—' }}</dd></div>
+        <div><dt>Responsável</dt><dd>{{ e.responsavel or '—' }}</dd></div>
+        <div><dt>Setor</dt><dd>{{ e.setor or '—' }}</dd></div>
+        <div><dt>Unidade</dt><dd>{{ e.unidade }}</dd></div>
+        <div><dt>Data da compra</dt><dd>{{ e.data_compra|databr }}</dd></div>
+        <div><dt>Garantia até</dt><dd>{% if e.garantia_ate and e.garantia_ate < hoje %}<span class="alerta-idade">{{ e.garantia_ate|databr }} (vencida)</span>{% else %}{{ e.garantia_ate|databr }}{% endif %}</dd></div>
+        <div><dt>Fornecedor / NF</dt><dd>{{ e.fornecedor or '—' }}{% if e.nota_fiscal %} · NF {{ e.nota_fiscal }}{% endif %}</dd></div>
+        {% if e.especificacoes %}<div class="largo"><dt>Outras especificações</dt><dd>{{ e.especificacoes }}</dd></div>{% endif %}
+        {% if e.observacoes %}<div class="largo"><dt>Observações</dt><dd>{{ e.observacoes }}</dd></div>{% endif %}
+      </dl></div>
+    </section>
+
+    {% if usuario.pode_senhas_pc %}
+    <section class="painel">
+      <div class="painel-cab"><div><h2>Senhas deste computador</h2><p>Criptografadas. Cada visualização fica registrada na auditoria.</p></div>
+        <a class="btn btn-peq" href="{{ url_for('estoque.cred_nova', eid=e.id) }}">Adicionar senha</a></div>
+      <div class="tabela-wrap"><table>
+        <thead><tr><th>Tipo</th><th>Usuário</th><th>Senha</th><th>Atualizada</th><th></th></tr></thead>
+        <tbody>
+        {% for c in creds %}
+          <tr><td><strong>{{ c.tipo }}</strong>{% if c.observacoes %}<span class="sub">{{ c.observacoes }}</span>{% endif %}</td>
+              <td>{{ c.usuario or '—' }}</td>
+              <td>{{ senha(url_for('estoque.revelar_pc', cid=c.id)) }}</td>
+              <td>{{ c.atualizado_em|databr }}<span class="sub">{{ c.atualizado_por }}</span></td>
+              <td class="num"><a class="btn btn-peq" href="{{ url_for('estoque.cred_editar', cid=c.id) }}">Editar</a></td></tr>
+        {% else %}
+          <tr><td colspan="5"><div class="vazio"><strong>Nenhuma senha cadastrada</strong>Adicione o administrador local, BIOS ou outros acessos deste computador.</div></td></tr>
+        {% endfor %}
+        </tbody>
+      </table></div>
+    </section>
+    {% endif %}
+  </div>
+
+  <section class="painel">
+    <div class="painel-cab"><h2>Histórico</h2></div>
+    {% if usuario.pode_editar_estoque %}
+    <form method="post" action="{{ url_for('estoque.anotacao', eid=e.id) }}" class="painel-corpo" style="display:flex;gap:8px;padding-bottom:6px">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="text" name="texto" placeholder="Nova ocorrência" title="Ex.: troca de HD, formatação, mudança de setor" maxlength="500" required>
+      <button class="btn" type="submit">Registrar</button>
+    </form>
+    {% endif %}
+    <ol class="linha-tempo">
+      {% for m in movs %}
+        <li><div class="quando">{{ m.data|databr(true) }} · {{ m.usuario }}</div>{{ m.descricao }}</li>
+      {% endfor %}
+    </ol>
+  </section>
+</div>
+{% endblock %}

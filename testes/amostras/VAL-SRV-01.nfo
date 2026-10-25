@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<MsInfo>
+<Metadata>
+<Version>8.0</Version>
+<CreationUTC>10/15/26 15:58:41</CreationUTC>
+</Metadata>
+<Category name="Resumo do Sistema">
+<Data>
+<Item><![CDATA[Nome do sistema operacional]]></Item>
+<Value><![CDATA[Microsoft Windows Server 2022 Standard]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Versão]]></Item>
+<Value><![CDATA[10.0.20348 Compilação 20348]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Nome do sistema]]></Item>
+<Value><![CDATA[VAL-SRV-01]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Fabricante do sistema]]></Item>
+<Value><![CDATA[Dell Inc.]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Modelo do sistema]]></Item>
+<Value><![CDATA[PowerEdge T150]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Tipo do sistema]]></Item>
+<Value><![CDATA[PC baseado em x64]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Processador]]></Item>
+<Value><![CDATA[Intel(R) Xeon(R) E-2314 CPU @ 2.80GHz, 2808 Mhz, 4 Núcleo(s), 4 Processador(es) Lógico(s)]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Função da Plataforma]]></Item>
+<Value><![CDATA[Servidor Empresarial]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Memória física (RAM) instalada]]></Item>
+<Value><![CDATA[32,0 GB]]></Value>
+</Data>
+<Category name="Hardware Resources"><Category name="Conflicts/Sharing">
+<Data>
+<Resource><![CDATA[I/O Port 0x00000000-0x00000CF7]]></Resource>
+<Device><![CDATA[PCI Express Root Complex]]></Device>
+</Data>
+</Category></Category>
+<Category name="Componentes">
+<Category name="Armazenamento">
+<Category name="Discos">
+<Data>
+<Item><![CDATA[Descrição]]></Item>
+<Value><![CDATA[Unidade de disco]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Modelo]]></Item>
+<Value><![CDATA[DELL PERC H355 SCSI Disk Device]]></Value>
+</Data>
+<Data>
+<Item><![CDATA[Tamanho]]></Item>
+<Value><![CDATA[1,82 TB (1.999.844.147.200 bytes)]]></Value>
+</Data>
+</Category>
+</Category>
+</Category>
+</Category>
+</MsInfo>

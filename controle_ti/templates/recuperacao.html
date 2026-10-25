@@ -1,0 +1,10 @@
+{% extends "_acesso.html" %}
+{% block titulo %}Código de recuperação{% endblock %}
+{% block form %}
+<h2>Guarde o código de recuperação</h2>
+<p>Ele é a única forma de recuperar as senhas guardadas se todos os administradores esquecerem a senha. Este código não será mostrado de novo.</p>
+<div class="codigo-recuperacao">{{ codigo }}</div>
+<div class="msg msg-aviso">Imprima ou anote em papel e guarde em local seguro (cofre físico ou com a diretoria). Não salve em arquivo no computador.</div>
+<p>Para usar: no servidor, rode <code>python gerenciar.py recuperar</code>.</p>
+<a class="btn btn-primario" href="{{ url_for('auth.login') }}">Já guardei, ir para o login</a>
+{% endblock %}
