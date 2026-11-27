@@ -153,64 +153,6 @@
   document.querySelectorAll("[data-imprimir]").forEach((b) =>
     b.addEventListener("click", () => window.print()));
 
-  const formTermo = document.querySelector("form[data-termo-form]");
-  if (formTermo) {
-    const aplicarTipo = () => {
-      const tipo = (formTermo.querySelector("input[data-tipo]:checked") || {}).value || "equipamentos";
-      formTermo.querySelectorAll("[data-so=eq]").forEach((el) => (el.hidden = tipo === "acessos"));
-      formTermo.querySelectorAll("[data-so=acc]").forEach((el) => (el.hidden = tipo === "equipamentos"));
-    };
-    formTermo.querySelectorAll("input[data-tipo]").forEach((r) => r.addEventListener("change", aplicarTipo));
-    aplicarTipo();
-
-    formTermo.addEventListener("click", (ev) => {
-      const add = ev.target.closest("[data-adicionar]");
-      if (add) {
-        const nome = add.dataset.adicionar;
-        const modelo = formTermo.querySelector(`template[data-modelo="${nome}"]`);
-        formTermo.querySelector(`[data-lista="${nome}"]`).appendChild(modelo.content.cloneNode(true));
-      }
-      const rem = ev.target.closest("[data-remover-linha]");
-      if (rem) rem.closest("[data-linha]").remove();
-      const ger = ev.target.closest("[data-gerar-linha]");
-      if (ger) {
-        const linha = ger.closest("[data-linha]");
-        linha.querySelector("input[name=ac_senha]").value = gerarSenha(12);
-        const og = linha.querySelector("select[data-origem]");
-        if (og) og.value = "digitada";
-      }
-    });
-
-    formTermo.addEventListener("change", (ev) => {
-      const sel = ev.target;
-      const linha = sel.closest("[data-linha]");
-      if (!linha) return;
-      const opt = sel.selectedOptions && sel.selectedOptions[0];
-      if (sel.matches("select[data-equip]") && opt && opt.value) {
-        linha.querySelector("input[name=item]").value = opt.dataset.item || "";
-        linha.querySelector("input[name=serie]").value = opt.dataset.serie || "";
-      }
-      if (sel.matches("select[data-cofre]")) {
-        const og = linha.querySelector("select[data-origem]");
-        if (opt && opt.value) {
-          linha.querySelector("input[name=ac_sistema]").value = opt.dataset.sistema || "";
-          linha.querySelector("input[name=ac_usuario]").value = opt.dataset.usuario || "";
-          linha.querySelector("input[name=ac_detalhe]").value = opt.dataset.detalhe || "";
-          if (og) og.value = "cofre";
-        } else if (og && og.value === "cofre") og.value = "digitada";
-      }
-    });
-
-    const cpf = formTermo.querySelector("[data-mascara-cpf]");
-    cpf && cpf.addEventListener("input", () => {
-      const d = cpf.value.replace(/\D/g, "").slice(0, 11);
-      cpf.value = d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
-        .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
-    });
-    const previa = document.getElementById("previa");
-    previa && previa.scrollIntoView({ behavior: "smooth" });
-  }
-
   // ---------- perfil admin desativa a lista de unidades
   const perfil = document.querySelector("#perfil");
   const todas = document.querySelector("#todas_unidades");

@@ -7,7 +7,7 @@
 
 {% macro documento(S, numero, empresa) -%}
 {%- set E = dict(empresa, **(S.empresaSnapshot or {})) -%}
-{%- set logo = empresa.logo or url_for('static', filename='logo.svg') -%}
+{%- set logo = empresa.logo or url_for('static', filename='logo-termo.jpg') -%}
 {%- set tipo = S.tipo or 'equipamentos' -%}
 {%- set completo = tipo == 'completo' -%}
 {%- set itens = S.itens or [] -%}

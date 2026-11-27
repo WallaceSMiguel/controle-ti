@@ -34,33 +34,42 @@ def preparar(app):
     return cli, con, unidades, eid, cid
 
 
-def form_termo(unidade, eid, cid, **extra):
-    d = {"tipo": "completo", "unidade_id": str(unidade), "nome": "Maria da Silva",
+def csrf_de(cli):
+    import re
+    return re.search(r'name="csrf" content="([^"]+)"', cli.get("/").get_data(as_text=True)).group(1)
+
+
+def termo_json(unidade, eid, cid, **extra):
+    d = {"tipo": "completo", "unidade_id": unidade, "nome": "Maria da Silva",
          "cpf": "123.456.789-00", "setor": "DP", "local": "Rio de Janeiro - RJ", "data": "2026-11-27",
          "recNome": "Ana Admin",
-         "item_equip": [str(eid), ""], "item": ["", "Mouse"], "serie": ["", ""], "qtd": ["1", "1"],
-         "estado": ["Bom", "Novo"], "item_obs": ["com carregador", ""],
-         "ac_orig": ["", "", ""], "ac_cofre": [str(cid), "", ""],
-         "ac_sistema": ["", "E-mail", "Telefonia"], "ac_usuario": ["", "maria@val.com", ""],
-         "ac_detalhe": ["", "", "Ramal 2031"], "ac_senha": ["", "Provisoria#9", ""],
-         "ac_senha_origem": ["cofre", "digitada", "nenhuma"], "acao": "salvar"}
+         "itens": [{"equipamento_id": eid, "item": "", "serie": "", "qtd": 1, "estado": "Bom", "obs": "com carregador"},
+                   {"item": "Mouse", "serie": "", "qtd": 1, "estado": "Novo", "obs": ""}],
+         "acessos": [{"cofre_id": cid, "sistema": "", "usuario": "MARIA", "detalhe": "", "usar_cofre": True},
+                     {"sid": "email", "sistema": "E-mail corporativo", "usuario": "maria@val.com", "senha": "Provisoria#9"},
+                     {"sid": "linkus", "sistema": "Telefonia Linkus", "usuario": "", "detalhe": "Ramal 2031"}]}
     d.update(extra)
     return d
+
+
+def enviar(cli, url, dados):
+    return cli.post(url, json={"dados": dados}, headers={"X-CSRF-Token": csrf_de(cli)})
 
 
 def test_termo_com_estoque_e_cofre(app):
     cli, con, unidades, eid, cid = preparar(app)
 
-    # pré-visualização não grava nada
-    r = post(cli, "/termos/novo", form_termo(unidades["Barra"], eid, cid, acao="previa"), pagina="/")
-    html = r.get_data(as_text=True)
-    assert r.status_code == 200 and "Pré-visualização" in html and "Rascunho" in html
+    # editor abre com os dados de estoque e cofre para a tela
+    html = cli.get("/termos/novo").get_data(as_text=True)
+    assert 'id="termo-config"' in html and "termo_editor.js" in html and "Latitude 3420" in html
     assert "Cofre#Senha1" not in html
-    assert con.execute("SELECT COUNT(*) FROM termos").fetchone()[0] == 0
 
-    r = post(cli, "/termos/novo", form_termo(unidades["Barra"], eid, cid), pagina="/")
-    assert r.status_code == 302, r.get_data(as_text=True)
-    tid = int(r.location.rstrip("/").split("/")[-1])
+    # sem CSRF não grava
+    assert cli.post("/termos/novo", json={"dados": termo_json(unidades["Barra"], eid, cid)}).status_code == 400
+
+    r = enviar(cli, "/termos/novo", termo_json(unidades["Barra"], eid, cid))
+    assert r.status_code == 200, r.get_data(as_text=True)
+    tid = r.get_json()["id"]
     numero, dados_txt, unidade_id = con.execute(
         "SELECT numero, dados, unidade_id FROM termos WHERE id = ?", (tid,)).fetchone()
     assert numero.startswith("TR-") and numero.endswith("-0001") and unidade_id == unidades["Barra"]
@@ -69,7 +78,7 @@ def test_termo_com_estoque_e_cofre(app):
     dados = json.loads(dados_txt)
     assert [bool(a.get("senha_enc")) for a in dados["acessos"]] == [True, True, False]
     assert dados["acessos"][0]["sistema"] == "Domínio Web" and dados["acessos"][0]["cofre_id"] == cid
-    assert not any(k.startswith("_") for a in dados["acessos"] for k in a)
+    assert dados["unidade"] == "Barra" and "unidade_id" not in dados
     # item veio do estoque
     assert "Dell Latitude 3420" in dados["itens"][0]["item"] and "VAL-001" in dados["itens"][0]["serie"]
     assert dados["itens"][0]["equipamento_id"] == eid
@@ -82,9 +91,11 @@ def test_termo_com_estoque_e_cofre(app):
     assert any(numero in m for m in movs)
     assert numero in cli.get(f"/estoque/{eid}").get_data(as_text=True)
 
-    # tela do termo não mostra senhas; impressão com senhas mostra e audita
+    # tela do termo e editor não mostram senhas; impressão com senhas mostra e audita
     html = cli.get(f"/termos/{tid}").get_data(as_text=True)
     assert "Maria da Silva" in html and "Cofre#Senha1" not in html and "Provisoria#9" not in html
+    html = cli.get(f"/termos/{tid}/editar").get_data(as_text=True)
+    assert "Cofre#Senha1" not in html and "Provisoria#9" not in html and "senha_enc" not in html
     html = cli.get(f"/termos/{tid}/imprimir").get_data(as_text=True)
     assert "Cofre#Senha1" not in html
     html = cli.get(f"/termos/{tid}/imprimir?senhas=1").get_data(as_text=True)
@@ -92,13 +103,17 @@ def test_termo_com_estoque_e_cofre(app):
     assert con.execute("SELECT COUNT(*) FROM auditoria WHERE acao = 'termo_impresso_com_senhas'").fetchone()[0] == 1
     assert con.execute("SELECT COUNT(*) FROM auditoria WHERE acao = 'cofre_senha_no_termo'").fetchone()[0] == 1
 
-    # edição com senha em branco mantém as senhas gravadas
-    r = post(cli, f"/termos/{tid}/editar", form_termo(
-        unidades["Barra"], eid, cid, ac_orig=["0", "1", "2"], ac_senha=["", "", ""],
-        ac_senha_origem=["cofre", "digitada", "nenhuma"], cargo="Analista"), pagina="/")
-    assert r.status_code == 302
+    # edição com senha em branco mantém as senhas gravadas; "limpar" remove
+    ed = termo_json(unidades["Barra"], eid, cid, cargo="Analista")
+    for i, a in enumerate(ed["acessos"]):
+        a["orig"] = i
+        a.pop("senha", None)
+        a["usar_cofre"] = False
+    ed["acessos"][2]["limpar"] = True
+    r = enviar(cli, f"/termos/{tid}/editar", ed)
+    assert r.status_code == 200, r.get_data(as_text=True)
     html = cli.get(f"/termos/{tid}/imprimir?senhas=1").get_data(as_text=True)
-    assert "Provisoria#9" in html and "Analista" in html
+    assert "Provisoria#9" in html and "Cofre#Senha1" in html and "Analista" in html
 
     # lista e busca
     assert numero in cli.get("/termos?q=VAL-001").get_data(as_text=True)
@@ -111,7 +126,7 @@ def test_termo_com_estoque_e_cofre(app):
     assert con.execute("SELECT status FROM termos WHERE id = ?", (tid,)).fetchone()[0] == "devolvido"
 
     # próximo número
-    r = post(cli, "/termos/novo", form_termo(unidades["Barra"], eid, cid, tipo="equipamentos"), pagina="/")
+    enviar(cli, "/termos/novo", termo_json(unidades["Barra"], eid, cid, tipo="equipamentos"))
     assert con.execute("SELECT numero FROM termos ORDER BY id DESC").fetchone()[0].endswith("-0002")
 
 
@@ -126,10 +141,10 @@ def test_empresa_e_validacoes(app):
     r = post(cli, "/termos/empresa", {"empresa": "Empresa Teste LTDA", "cnpj": "00.000.000/0001-00"},
              pagina="/")
     assert r.status_code == 302
-    r = post(cli, "/termos/novo", form_termo(unidades["Barra"], eid, cid, nome=""), pagina="/")
-    assert "Informe o nome do colaborador" in r.get_data(as_text=True)
-    r = post(cli, "/termos/novo", form_termo(unidades["Barra"], eid, cid), pagina="/")
-    tid = int(r.location.rstrip("/").split("/")[-1])
+    r = enviar(cli, "/termos/novo", termo_json(unidades["Barra"], eid, cid, nome=""))
+    assert r.status_code == 400 and "Informe o nome do colaborador" in r.get_json()["erro"]
+    r = enviar(cli, "/termos/novo", termo_json(unidades["Barra"], eid, cid))
+    tid = r.get_json()["id"]
     assert "Empresa Teste LTDA" in cli.get(f"/termos/{tid}").get_data(as_text=True)
 
 

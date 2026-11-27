@@ -6,7 +6,8 @@ msinfo32) e com o cofre de senhas (acessos podem vir do cofre, com a senha).
 import base64
 import json
 
-from flask import (Blueprint, abort, flash, g, redirect, render_template, request, url_for)
+from flask import (Blueprint, abort, flash, g, jsonify, redirect, render_template, request,
+                   url_for)
 
 from .. import cripto, db, hardware
 from .. import seguranca as seg
@@ -52,7 +53,7 @@ def equipamentos_disponiveis():
         rotulo = " · ".join(x for x in (f"{e['tipo']} {e['marca'] or ''} {e['modelo'] or ''}".strip(),
                                         e["patrimonio"], e["hostname"], e["responsavel"]) if x)
         out.append({"id": e["id"], "unidade": e["unidade"], "rotulo": rotulo, "item": item,
-                    "serie": serie, "unidade_id": e["unidade_id"]})
+                    "serie": serie, "unidade_id": e["unidade_id"], "setor": e["setor"] or ""})
     return out
 
 
@@ -66,23 +67,27 @@ def cofre_disponivel():
         "ORDER BY c.sistema COLLATE NOCASE", params).fetchall()
 
 
-def _lista(form, nome):
-    return form.getlist(nome)
+def _txt(v, limite):
+    return str(v if v is not None else "").strip()[:limite]
 
 
-def ler_form(original: dict | None, previa: bool = False):
-    """Monta o JSON do termo a partir do formulário. Devolve (dados, unidade_id, erros)."""
-    f = request.form
+def ler_json(body: dict, original: dict | None):
+    """Monta o termo a partir do JSON enviado pelo editor. Devolve (dados, unidade_id, erros)."""
+    d = (body or {}).get("dados") or {}
+    if not isinstance(d, dict):
+        abort(400)
     orig = original or {}
-    dados = {k: txt(f, k, lim) for k, lim in CAMPOS_TEXTO.items()}
-    dados["tipo"] = f.get("tipo") if f.get("tipo") in T.TIPOS else "equipamentos"
-    dados["data"] = data_form(f.get("data")) or ""
+    dados = {k: _txt(d.get(k), lim) for k, lim in CAMPOS_TEXTO.items()}
+    dados["tipo"] = d.get("tipo") if d.get("tipo") in T.TIPOS else "equipamentos"
+    dados["data"] = data_form(d.get("data")) or ""
     dados["empresaSnapshot"] = orig.get("empresaSnapshot") or T.snapshot_empresa()
     erros = []
 
-    un = f.get("unidade_id") or ""
-    unidade_id = int(un) if un.isdigit() else None
-    unidade_nome = ""
+    unidade_id, unidade_nome = None, ""
+    try:
+        unidade_id = int(d.get("unidade_id") or 0) or None
+    except (TypeError, ValueError):
+        unidade_id = None
     if unidade_id:
         r = db.get_db().execute("SELECT nome FROM unidades WHERE id = ?", (unidade_id,)).fetchone()
         if not r or not g.usuario.acessa_unidade(unidade_id):
@@ -93,73 +98,79 @@ def ler_form(original: dict | None, previa: bool = False):
     elif not g.usuario.todas_unidades:
         erros.append("Selecione a unidade.")
     dados["unidade"] = unidade_nome
-    dados["unidade_id"] = unidade_id  # só para a tela; não vai para o JSON gravado
 
     # ---- itens
     equip = {e["id"]: e for e in equipamentos_disponiveis()}
     itens = []
-    for eq, item, serie, qtd, estado, obs in zip(
-            _lista(f, "item_equip"), _lista(f, "item"), _lista(f, "serie"), _lista(f, "qtd"),
-            _lista(f, "estado"), _lista(f, "item_obs")):
-        it = {"item": item.strip()[:200], "serie": serie.strip()[:200],
-              "qtd": qtd.strip()[:5] or "1", "estado": estado if estado in T.ESTADOS else "Novo",
-              "obs": obs.strip()[:300]}
-        if eq.isdigit():
-            e = equip.get(int(eq))
-            if not e:
+    for it_in in (d.get("itens") or []) if dados["tipo"] != "acessos" else []:
+        if not isinstance(it_in, dict):
+            continue
+        it = {"item": _txt(it_in.get("item"), 200), "serie": _txt(it_in.get("serie"), 200),
+              "qtd": _txt(it_in.get("qtd"), 5) or "1", "estado": _txt(it_in.get("estado"), 40) or "Novo",
+              "obs": _txt(it_in.get("obs"), 300)}
+        try:
+            eid = int(it_in.get("equipamento_id") or 0)
+        except (TypeError, ValueError):
+            eid = 0
+        if eid:
+            antes = eid in T.ids_equipamentos(orig)
+            if eid not in equip and not antes:
                 erros.append("Equipamento inválido em um dos itens.")
                 continue
-            it["equipamento_id"] = e["id"]
-            it["item"] = it["item"] or e["item"]
-            it["serie"] = it["serie"] or e["serie"]
-        if it["item"] or it["serie"] or it.get("equipamento_id"):
+            it["equipamento_id"] = eid
+            if eid in equip:
+                it["item"] = it["item"] or equip[eid]["item"]
+                it["serie"] = it["serie"] or equip[eid]["serie"]
+        if it["item"] or it["serie"] or it["obs"]:
             itens.append(it)
-    dados["itens"] = itens if dados["tipo"] != "acessos" else []
+    dados["itens"] = itens
 
     # ---- acessos
     acessos_orig = orig.get("acessos") or []
-    acessos = []
-    dek = None
-    for cofre_id, sistema, usuario, detalhe, senha, origem, idx in zip(
-            _lista(f, "ac_cofre"), _lista(f, "ac_sistema"), _lista(f, "ac_usuario"),
-            _lista(f, "ac_detalhe"), _lista(f, "ac_senha"), _lista(f, "ac_senha_origem"),
-            _lista(f, "ac_orig")):
-        a = {"sistema": sistema.strip()[:150], "usuario": usuario.strip()[:150],
-             "detalhe": detalhe.strip()[:300],
-             # campos "_..." só voltam para a tela na pré-visualização; não são gravados
-             "_orig": idx if idx.isdigit() else "", "_senha": senha[:200] if origem == "digitada" else "",
-             "_origem": origem}
-        anterior = acessos_orig[int(idx)] if idx.isdigit() and int(idx) < len(acessos_orig) else {}
+    acessos, dek = [], None
+    for a_in in (d.get("acessos") or []) if dados["tipo"] != "equipamentos" else []:
+        if not isinstance(a_in, dict):
+            continue
+        a = {"sid": _txt(a_in.get("sid"), 20), "sistema": _txt(a_in.get("sistema"), 150),
+             "usuario": _txt(a_in.get("usuario"), 150), "detalhe": _txt(a_in.get("detalhe"), 300)}
+        if not a["sid"]:
+            a.pop("sid")
+        try:
+            idx = int(a_in.get("orig")) if a_in.get("orig") is not None else -1
+        except (TypeError, ValueError):
+            idx = -1
+        anterior = acessos_orig[idx] if 0 <= idx < len(acessos_orig) else {}
+        try:
+            cofre_id = int(a_in.get("cofre_id") or 0)
+        except (TypeError, ValueError):
+            cofre_id = 0
         item_cofre = None
-        if cofre_id.isdigit() and not g.usuario.pode_cofre:
+        if cofre_id and not g.usuario.pode_cofre:
             # quem não acessa o cofre pode editar o termo, mas só mantém o vínculo que já existia
-            if anterior.get("cofre_id") != int(cofre_id):
+            if anterior.get("cofre_id") != cofre_id:
                 abort(403)
-            a["cofre_id"] = int(cofre_id)
-        elif cofre_id.isdigit():
-            item_cofre = db.get_db().execute("SELECT * FROM cofre WHERE id = ?", (int(cofre_id),)).fetchone()
+            a["cofre_id"] = cofre_id
+        elif cofre_id:
+            item_cofre = db.get_db().execute("SELECT * FROM cofre WHERE id = ?", (cofre_id,)).fetchone()
             if not item_cofre or not g.usuario.acessa_unidade(item_cofre["unidade_id"]):
                 erros.append("Registro do cofre inválido em um dos acessos.")
                 continue
-            a["cofre_id"] = item_cofre["id"]
+            a["cofre_id"] = cofre_id
             a["sistema"] = a["sistema"] or item_cofre["sistema"]
-            a["usuario"] = a["usuario"] or (item_cofre["usuario"] or "")
-            a["detalhe"] = a["detalhe"] or (item_cofre["url"] or "")
         if not (a["sistema"] or a["usuario"]):
             continue
-        if origem == "cofre" and item_cofre:
+        senha = str(a_in.get("senha") or "")[:200]
+        if a_in.get("usar_cofre") and item_cofre:
             dek = dek or seg.dek_atual()
-            senha_cofre = cripto.decifrar(dek, item_cofre["senha_enc"], "cofre")
-            a["senha_enc"] = T.cifrar_senha(dek, senha_cofre)
-            if not previa and (anterior.get("cofre_id") != item_cofre["id"] or not anterior.get("senha_enc")):
-                seg.auditar("cofre_senha_no_termo", f"#{item_cofre['id']} {item_cofre['sistema']}")
-        elif origem == "digitada" and senha:
+            a["senha_enc"] = T.cifrar_senha(dek, cripto.decifrar(dek, item_cofre["senha_enc"], "cofre"))
+            seg.auditar("cofre_senha_no_termo", f"#{item_cofre['id']} {item_cofre['sistema']}")
+        elif senha:
             dek = dek or seg.dek_atual()
-            a["senha_enc"] = T.cifrar_senha(dek, senha[:200])
-        elif origem != "nenhuma" and anterior.get("senha_enc"):
+            a["senha_enc"] = T.cifrar_senha(dek, senha)
+        elif anterior.get("senha_enc") and not a_in.get("limpar"):
             a["senha_enc"] = anterior["senha_enc"]  # mantém a senha já gravada
         acessos.append(a)
-    dados["acessos"] = acessos if dados["tipo"] != "equipamentos" else []
+    dados["acessos"] = acessos
 
     if not dados["nome"]:
         erros.append("Informe o nome do colaborador.")
@@ -171,10 +182,7 @@ def ler_form(original: dict | None, previa: bool = False):
 
 
 def _json(dados: dict) -> str:
-    limpo = {k: v for k, v in dados.items() if k != "unidade_id"}
-    limpo["acessos"] = [{k: v for k, v in a.items() if not k.startswith("_")}
-                        for a in dados.get("acessos") or []]
-    return json.dumps(limpo, ensure_ascii=False)
+    return json.dumps({k: v for k, v in dados.items() if k != "unidade_id"}, ensure_ascii=False)
 
 
 def _entregar_equipamentos(con, ids, nome, setor, numero):
@@ -190,14 +198,38 @@ def _entregar_equipamentos(con, ids, nome, setor, numero):
         registrar_mov(con, eid, f"Entregue a {nome} pelo termo {numero}")
 
 
-def _formulario(t, dados, erros, previa=False):
-    acessos = dados.get("acessos") or []
-    senhas_gravadas = [bool(a.get("senha_enc")) for a in acessos]
-    return render_template(
-        "termo_form.html", t=t, d=dados, erros=erros, tipos=T.TIPOS, estados=T.ESTADOS,
-        unidades=unidades_do_usuario(), equipamentos=equipamentos_disponiveis(),
-        cofre=cofre_disponivel(), senhas_gravadas=senhas_gravadas, previa=previa,
-        empresa=T.empresa(), doc=T.para_documento(dados))
+def _editor(t, dados):
+    """Tela do editor (formulário + pré-visualização ao vivo, igual ao sistema de termos)."""
+    acessos = []
+    for i, a in enumerate(dados.get("acessos") or []):
+        a = {k: v for k, v in a.items() if k not in ("senha", "senha_enc")}
+        a["tem_senha"] = bool((dados.get("acessos") or [])[i].get("senha_enc"))
+        a["orig"] = i
+        acessos.append(a)
+    equip = equipamentos_disponiveis()
+    cofre = [{"id": c["id"], "sistema": c["sistema"], "usuario": c["usuario"] or "", "url": c["url"] or "",
+              "unidade": c["unidade"] or ""} for c in cofre_disponivel()]
+    emp = T.empresa()
+    cfg = {
+        "modo": "editar" if t else "novo",
+        "numero": t["numero"] if t else None,
+        "url_salvar": url_for("termos.editar", tid=t["id"]) if t else url_for("termos.novo"),
+        "url_voltar": url_for("termos.detalhe", tid=t["id"]) if t else url_for("termos.lista"),
+        "csrf": seg.csrf_token(),
+        "empresa": emp,
+        "logo_padrao": url_for("static", filename="logo-termo.jpg"),
+        "usuario_nome": g.usuario.nome,
+        "unidades": [{"id": u["id"], "nome": u["nome"]} for u in unidades_do_usuario()],
+        "equipamentos": equip,
+        "cofre": cofre,
+        "dados": dict(dados, acessos=acessos),
+        "dados_vindos": bool(t) or bool(dados.get("itens")),
+    }
+    return render_template("termo_editor.html", t=t, cfg=cfg)
+
+
+def _resposta_erros(erros):
+    return jsonify(erro=" ".join(erros)), 400
 
 
 # ------------------------------------------------------------------- rotas ---
@@ -233,9 +265,9 @@ def lista():
 @seg.requer_editor
 def novo():
     if request.method == "POST":
-        dados, unidade_id, erros = ler_form(None, request.form.get("acao") == "previa")
-        if request.form.get("acao") == "previa" or erros:
-            return _formulario(None, dados, erros, previa=not erros)
+        dados, unidade_id, erros = ler_json(request.get_json(silent=True), None)
+        if erros:
+            return _resposta_erros(erros)
         con = db.get_db()
         numero = T.proximo_numero(con)
         agora = db.agora()
@@ -252,7 +284,7 @@ def novo():
         con.commit()
         seg.auditar("termo_criado", f"{numero} {dados['nome']}")
         flash(f"Termo {numero} salvo.", "ok")
-        return redirect(url_for("termos.detalhe", tid=tid))
+        return jsonify(id=tid, numero=numero, url=url_for("termos.detalhe", tid=tid))
 
     emp = T.empresa()
     dados = {"tipo": "equipamentos", "local": emp["local"], "data": db.agora()[:10],
@@ -266,7 +298,8 @@ def novo():
         dados["nome"] = e["responsavel"] or ""
         dados["setor"] = e["setor"] or ""
         dados["unidade_id"] = e["unidade_id"]
-    return _formulario(None, dados, [])
+        dados["unidade"] = e["unidade"]
+    return _editor(None, dados)
 
 
 @bp.route("/termos/<int:tid>/editar", methods=["GET", "POST"])
@@ -274,9 +307,9 @@ def novo():
 def editar(tid):
     t = obter_termo(tid)
     if request.method == "POST":
-        dados, unidade_id, erros = ler_form(t["dados"], request.form.get("acao") == "previa")
-        if request.form.get("acao") == "previa" or erros:
-            return _formulario(t, dados, erros, previa=not erros)
+        dados, unidade_id, erros = ler_json(request.get_json(silent=True), t["dados"])
+        if erros:
+            return _resposta_erros(erros)
         con = db.get_db()
         antes = set(T.ids_equipamentos(t["dados"]))
         con.execute("UPDATE termos SET tipo = ?, colaborador = ?, cpf = ?, unidade_id = ?, "
@@ -293,9 +326,9 @@ def editar(tid):
         T.historico(con, tid, g.usuario.nome, "editado")
         con.commit()
         flash("Alterações salvas.", "ok")
-        return redirect(url_for("termos.detalhe", tid=tid))
+        return jsonify(id=tid, numero=t["numero"], url=url_for("termos.detalhe", tid=tid))
     dados = dict(t["dados"], unidade_id=t["unidade_id"])
-    return _formulario(t, dados, [])
+    return _editor(t, dados)
 
 
 @bp.route("/termos/<int:tid>")

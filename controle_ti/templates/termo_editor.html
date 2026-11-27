@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block titulo %}{{ 'Editar termo ' ~ t.numero if t else 'Novo termo' }}{% endblock %}
+{% block conteudo %}
+<link rel="stylesheet" href="{{ url_for('static', filename='termo_editor.css') }}">
+<script type="application/json" id="termo-config">{{ cfg|tojson }}</script>
+<div id="termo-editor"></div>
+<script src="{{ url_for('static', filename='termo_editor.js') }}" defer></script>
+{% endblock %}
