@@ -1,0 +1,78 @@
+/* Editor do termo, igual ao do sistema de termos (formulário + pré-visualização ao vivo).
+   Tudo dentro de #termo-editor para não afetar o resto do Controle TI. */
+#termo-editor{
+  --brand:#F2501B; --brand-dark:#C93A0C; --brand-soft:#FFF1EB; --brand-border:#F7B59D;
+  --brand-ring:rgba(242,80,27,.12); --on-brand:#fff;
+  --ink:#24272B; --muted:#5E646B; --line:#E3E5E8; --line-soft:#F0F1F3; --line-strong:#C9CDD2; --bg:#EEF0F2;
+  --surface:#fff; --surface-2:#FAFBFC; --chip:#EEF0F2; --toast:#24272B;
+  --ok:#1d7a3c; --ok-bg:#e5f5ea; --info:#24569b; --info-bg:#e8f0fb; --bad:#a1271b; --bad-bg:#fde8e6;
+  --warn:#7a5200; --warn-bg:#fff8e6; --warn-line:#f4d48a; --violet:#5b3cc4; --violet-bg:#efe9fd;
+  color-scheme:light;font-family:Inter,system-ui,sans-serif;font-size:14px;color:var(--ink);
+}
+#termo-editor *{box-sizing:border-box}
+#termo-editor button,#termo-editor input,#termo-editor select,#termo-editor textarea{font:inherit;color:inherit}
+#termo-editor [hidden]{display:none!important}
+#termo-editor .btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:500;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink);white-space:nowrap}
+#termo-editor .btn:hover{border-color:var(--line-strong)}
+#termo-editor .btn.primary{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
+#termo-editor .btn.primary:hover{background:var(--brand-dark)}
+#termo-editor .btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+#termo-editor .btn.danger{color:var(--bad)}
+#termo-editor .btn.small{padding:5px 10px;font-size:13px}
+#termo-editor .btn:disabled{opacity:.5;cursor:default}
+#termo-editor label.f{display:grid;gap:4px;font-size:12px;color:var(--muted);font-weight:500}
+#termo-editor label.f input,#termo-editor label.f select,#termo-editor label.f textarea,#termo-editor .input{border:1px solid var(--line);border-radius:7px;padding:8px 10px;background:var(--surface);font-size:14px;color:var(--ink);width:100%}
+#termo-editor label.f textarea{resize:vertical;min-height:60px}
+#termo-editor input:focus,#termo-editor select:focus,#termo-editor textarea:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+#termo-editor .hint{font-size:12px;color:var(--muted);margin:0}
+#termo-editor .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#termo-editor .sp{flex:1}
+#termo-editor .editor{display:grid;grid-template-columns:minmax(360px,430px) 1fr;min-height:calc(100vh - 56px)}
+#termo-editor .form{background:var(--surface);border-right:1px solid var(--line);padding:16px 18px 80px;overflow:auto;max-height:calc(100vh - 56px);position:sticky;top:56px}
+#termo-editor .form-actions{display:flex;gap:8px;margin-bottom:14px;align-items:center}
+#termo-editor .preview{padding:28px 24px 60px;overflow:auto}
+#termo-editor details.sec{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;background:var(--surface)}
+#termo-editor details.sec>summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:600;display:flex;align-items:center;gap:10px}
+#termo-editor details.sec>summary::-webkit-details-marker{display:none}
+#termo-editor details.sec>summary .num{width:22px;height:22px;border-radius:50%;background:var(--brand-soft);color:var(--brand);font-size:12px;display:grid;place-items:center;font-weight:700}
+#termo-editor details.sec>summary::after{content:"▾";margin-left:auto;color:var(--muted);transition:transform .15s}
+#termo-editor details.sec:not([open])>summary::after{transform:rotate(-90deg)}
+#termo-editor .sec .body{padding:2px 14px 14px;display:grid;gap:10px}
+#termo-editor .item-card{border:1px dashed var(--line-strong);border-radius:8px;padding:10px;display:grid;gap:8px;position:relative}
+#termo-editor .item-card .idx{font-size:11px;font-weight:700;color:var(--brand);text-transform:uppercase;letter-spacing:.04em}
+#termo-editor .item-card .rm{position:absolute;top:6px;right:6px}
+#termo-editor .row3{display:grid;grid-template-columns:1.4fr .6fr 1fr;gap:8px}
+#termo-editor .toggle{display:flex;align-items:center;gap:8px;font-weight:500;font-size:13px}
+#termo-editor .tipo-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+#termo-editor .tipo-opt{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 8px;cursor:pointer;display:grid;justify-items:center;gap:2px;text-align:center;transition:all .15s}
+#termo-editor .tipo-opt .ic{font-size:20px}
+#termo-editor .tipo-opt b{font-size:13px}
+#termo-editor .tipo-opt small{font-size:11px;color:var(--muted);line-height:1.25}
+#termo-editor .tipo-opt:hover{border-color:var(--brand-border)}
+#termo-editor .tipo-opt.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 0 0 3px var(--brand-ring)}
+#termo-editor .tipo-opt.on b{color:var(--brand-dark)}
+#termo-editor .lbl{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
+#termo-editor .chips{display:flex;flex-wrap:wrap;gap:6px}
+#termo-editor .chip{border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:6px 12px;cursor:pointer;font-size:13px;font-weight:500}
+#termo-editor .chip:hover{border-color:var(--brand-border)}
+#termo-editor .chip.on{border-color:var(--brand);background:var(--brand);color:var(--on-brand)}
+#termo-editor .sys-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#termo-editor .sys{position:relative;border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 26px 10px 10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;text-align:left;transition:all .15s}
+#termo-editor .sys .ic{width:30px;height:30px;border-radius:8px;background:var(--chip);display:grid;place-items:center;font-size:16px;flex:none}
+#termo-editor .sys .ck{position:absolute;top:6px;right:8px;font-style:normal;font-size:12px;color:var(--on-brand);background:var(--brand);width:18px;height:18px;border-radius:50%;display:none;place-items:center}
+#termo-editor .sys:hover{border-color:var(--brand-border)}
+#termo-editor .sys.on{border-color:var(--brand);background:var(--brand-soft)}
+#termo-editor .sys.on .ic{background:var(--surface)}
+#termo-editor .sys.on .ck{display:grid}
+#termo-editor .sys.outro{border-style:dashed;color:var(--muted)}
+#termo-editor .acc-tools{display:flex;gap:8px;flex-wrap:wrap}
+#termo-editor .acc-card .idx{font-size:12px;text-transform:none;letter-spacing:0}
+#termo-editor .pw{display:flex;gap:6px}
+#termo-editor .pw input{font-family:ui-monospace,Consolas,monospace}
+#termo-editor .empty-acc{border:1px dashed var(--line-strong);border-radius:8px;padding:14px;text-align:center;color:var(--muted);font-size:13px}
+#termo-editor{margin:0 -36px -60px;background:var(--bg)}
+#termo-editor .editor{min-height:100vh}
+#termo-editor .form{top:0;max-height:100vh}
+#termo-editor .preview{overflow:auto}
+@media (max-width:1100px){#termo-editor .editor{grid-template-columns:1fr}#termo-editor .form{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line)}#termo-editor .preview{padding:16px;overflow-x:auto}}
+@media (max-width:900px){#termo-editor{margin:0 -16px -48px}}
