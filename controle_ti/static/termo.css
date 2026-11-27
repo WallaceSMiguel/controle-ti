@@ -1,0 +1,69 @@
+/* Folha A4 do termo de responsabilidade (vinda do sistema de termos).
+   Tudo fica dentro de .sheet para não conflitar com o estilo do Controle TI. */
+.sheet{--brand:#F2501B;--brand-dark:#C93A0C;--brand-soft:#FFF1EB;--ink:#24272B;--muted:#5E646B;--line:#E3E5E8;--on-brand:#fff;color-scheme:light}
+.sheet{width:210mm;min-height:297mm;margin:0 auto;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.06),0 12px 40px rgba(0,0,0,.08);padding:16mm 18mm 22mm;position:relative;font-family:"Source Serif 4",Georgia,serif;font-size:10.5pt;line-height:1.5;color:#1f2226}
+.sheet .doc-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:10px;border-bottom:2.5px solid var(--brand)}
+.sheet .doc-head img{height:54px;object-fit:contain}
+.sheet .doc-head .meta{text-align:right;font-family:Inter,sans-serif;font-size:8pt;color:var(--muted);line-height:1.45}
+.sheet .doc-head .meta b{color:var(--ink)}
+.sheet .doc-num{display:inline-block;margin-top:3px;font-weight:700;color:var(--brand-dark);font-size:8.5pt}
+.sheet .doc-title{font-family:Inter,sans-serif;text-align:center;margin:18px 0 4px;font-size:15pt;font-weight:700;letter-spacing:.02em;color:var(--ink)}
+.sheet .doc-sub{text-align:center;font-family:Inter,sans-serif;font-size:8.5pt;color:var(--muted);margin:0 0 16px}
+.sheet p{margin:0 0 8px;text-align:justify}
+.sheet .clause{margin-top:12px;break-inside:avoid-page}
+.sheet .clause h3{font-family:Inter,sans-serif;font-size:9.5pt;font-weight:700;color:var(--brand-dark);text-transform:uppercase;letter-spacing:.04em;margin:0 0 5px;padding-left:8px;border-left:3px solid var(--brand)}
+.sheet .clause ul{margin:4px 0 6px;padding-left:20px}
+.sheet .clause li{margin:1px 0}
+.sheet .fill{font-weight:600;border-bottom:1px solid #9aa0a6;padding:0 2px}
+.sheet .fill.empty{color:#b0b4b9;font-weight:400}
+.sheet .ficha{display:grid;grid-template-columns:1fr 1fr;border:1px solid #d9dcdf;border-radius:6px;margin:0 0 12px;font-family:Inter,sans-serif;overflow:hidden}
+.sheet .ficha>div{padding:6px 10px;border-bottom:1px solid #eceef0;border-right:1px solid #eceef0;display:grid;gap:1px}
+.sheet .ficha>div:nth-child(2n){border-right:0}
+.sheet .ficha>div:nth-last-child(-n+2){border-bottom:0}
+.sheet .ficha span{font-size:7pt;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.sheet .ficha b{font-size:9.5pt}
+.sheet .mono-doc{font-family:ui-monospace,Consolas,monospace;font-weight:600}
+.sheet .blank-line{display:inline-block;width:90%;border-bottom:1px solid #9aa0a6;height:11px}
+.sheet p.note{font-family:Inter,sans-serif;font-size:7.5pt;color:var(--muted);margin:2px 0 6px}
+.sheet table.items{width:100%;border-collapse:collapse;font-family:Inter,sans-serif;font-size:8.5pt;margin:6px 0 4px}
+.sheet table.items th{background:var(--brand);color:#fff;font-weight:600;text-align:left;padding:6px 7px;border:1px solid var(--brand)}
+.sheet table.items td{border:1px solid #d9dcdf;padding:6px 7px;vertical-align:top;word-break:break-word}
+.sheet table.items tr:nth-child(even) td{background:#fafafa}
+.sheet table.items td.c{text-align:center}
+.sheet .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:7.5pt;font-weight:600;background:#eef0f2;color:#444}
+.sheet .pill.novo{background:#e5f5ea;color:#1d7a3c}
+.sheet .pill.bom{background:#e8f0fb;color:#24569b}
+.sheet .pill.regular{background:#fff4dc;color:#8a5a00}
+.sheet .pill.danificado{background:#fde8e6;color:#a1271b}
+.sheet .sig-wrap{margin-top:22px;break-inside:avoid-page}
+.sheet .place-date{font-family:Inter,sans-serif;font-size:9.5pt;margin-bottom:26px}
+.sheet .sigs{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.sheet .sig{font-family:Inter,sans-serif;font-size:8.5pt}
+.sheet .sig .line{border-top:1px solid #333;margin-top:46px;padding-top:5px;text-align:center;font-weight:600;font-size:9pt}
+.sheet .sig .role{text-align:center;color:var(--muted);font-size:8pt;margin-bottom:6px}
+.sheet .sig dl{display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin:0}
+.sheet .sig dt{color:var(--muted)}
+.sheet .sig dd{margin:0;font-weight:500}
+.sheet .obs-box{margin-top:16px;border:1px solid #d9dcdf;border-radius:6px;padding:8px 10px;font-family:Inter,sans-serif;font-size:8.5pt;min-height:40px}
+.sheet .obs-box b{color:var(--muted);font-weight:600}
+.sheet .doc-foot{position:absolute;left:18mm;right:18mm;bottom:9mm;border-top:1px solid var(--line);padding-top:5px;font-family:Inter,sans-serif;font-size:7pt;color:#8a9097;display:flex;justify-content:space-between;gap:12px}
+.folha-wrap{background:#eef0f2;padding:24px;border-radius:12px;overflow-x:auto}
+.senha-gravada{font-size:12px;color:#5E646B}
+.termo-itens .item-linha{display:grid;grid-template-columns:2fr 2fr 1.4fr 70px 120px 1.4fr 40px;gap:8px;align-items:end;padding:10px 0;border-bottom:1px solid #eceef0}
+.termo-itens .acesso-linha{display:grid;grid-template-columns:1.6fr 1.4fr 1.3fr 1.3fr 1.2fr 1.3fr 40px;gap:8px;align-items:end;padding:10px 0;border-bottom:1px solid #eceef0}
+.termo-itens label{display:block;font-size:12px;color:#5E646B;margin-bottom:3px}
+.termo-itens input,.termo-itens select{width:100%}
+.tipo-escolha{display:flex;gap:10px;flex-wrap:wrap}
+.tipo-escolha label{display:flex;align-items:center;gap:6px;border:1px solid #d9dcdf;border-radius:8px;padding:8px 12px;cursor:pointer}
+@media (max-width:1100px){.termo-itens .item-linha,.termo-itens .acesso-linha{grid-template-columns:1fr 1fr}}
+.pagina-impressao{background:#eef0f2;margin:0;padding:20px}
+.barra-impressao{max-width:210mm;margin:0 auto 14px;display:flex;gap:8px;align-items:center;font-family:system-ui,sans-serif}
+.barra-impressao .aviso{flex:1;font-size:13px;color:#8a5a00}
+@page{size:A4;margin:14mm 16mm 18mm}
+@media print{
+  .pagina-impressao{background:#fff;padding:0}
+  .barra-impressao{display:none!important}
+  .sheet{width:auto;min-height:0;box-shadow:none;padding:0;margin:0}
+  .sheet .doc-foot{position:fixed;left:0;right:0;bottom:-10mm}
+  .sheet table.items th,.sheet .pill,.sheet .clause h3,.sheet .doc-head{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}

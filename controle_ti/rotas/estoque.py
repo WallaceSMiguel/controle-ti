@@ -266,8 +266,11 @@ def detalhe(eid):
         creds = con.execute("SELECT id, tipo, usuario, observacoes, atualizado_em, "
                             "atualizado_por FROM credenciais_pc WHERE equipamento_id = ? "
                             "ORDER BY tipo", (eid,)).fetchall()
+    termos = con.execute("SELECT t.id, t.numero, t.colaborador, t.status, t.criado_em FROM termos t "
+                         "JOIN termo_equipamentos te ON te.termo_id = t.id "
+                         "WHERE te.equipamento_id = ? ORDER BY t.criado_em DESC", (eid,)).fetchall()
     return render_template("estoque_detalhe.html", e=e, movs=movs, creds=creds,
-                           hw=hardware.carregar(eid))
+                           hw=hardware.carregar(eid), termos=termos)
 
 
 @bp.route("/estoque/<int:eid>/editar", methods=["GET", "POST"])

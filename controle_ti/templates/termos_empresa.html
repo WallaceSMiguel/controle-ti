@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import erros_form %}
+{% block titulo %}Dados da empresa nos termos{% endblock %}
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('termos.lista') }}">← Termos</a>
+  <h1>Dados da empresa nos termos</h1>
+  <p>Usados nos termos novos. Termos já emitidos mantêm os dados da época.</p></div></div>
+{{ erros_form(erros) }}
+<form method="post" class="painel" enctype="multipart/form-data" style="max-width:860px">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="secao-form"><div class="campos">
+    <div class="campo largo"><label for="empresa">Razão social</label><input type="text" id="empresa" name="empresa" value="{{ emp.empresa or '' }}" required></div>
+    <div class="campo"><label for="cnpj">CNPJ</label><input type="text" id="cnpj" name="cnpj" value="{{ emp.cnpj or '' }}"></div>
+    <div class="campo"><label for="local">Cidade padrão (local de assinatura)</label><input type="text" id="local" name="local" value="{{ emp.local or '' }}"></div>
+    <div class="campo largo"><label for="empEndereco">Endereço</label><input type="text" id="empEndereco" name="empEndereco" value="{{ emp.empEndereco or '' }}"></div>
+    <div class="campo"><label for="empContato">Contato (rodapé)</label><input type="text" id="empContato" name="empContato" value="{{ emp.empContato or '' }}"></div>
+    <div class="campo"><label for="dominioEmail">Domínio de e-mail</label><input type="text" id="dominioEmail" name="dominioEmail" value="{{ emp.dominioEmail or '' }}"></div>
+    <div class="campo largo"><label for="logo">Logo (PNG ou JPG, até 600 KB)</label>
+      {% if emp.logo %}<img src="{{ emp.logo }}" alt="Logo atual" style="max-height:60px;margin:6px 0">
+      <label class="check"><input type="checkbox" name="remover_logo" value="1"> Remover logo (usar o padrão)</label>{% endif %}
+      <input type="file" id="logo" name="logo" accept="image/png,image/jpeg"></div>
+  </div></div>
+  <div class="form-rodape">
+    <a class="btn" href="{{ url_for('termos.lista') }}">Cancelar</a>
+    <button class="btn btn-primario" type="submit">Salvar</button>
+  </div>
+</form>
+{% endblock %}

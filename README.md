@@ -1,10 +1,11 @@
 # Controle TI — Valorização
 
-Sistema web local para a equipe de TI, com três módulos:
+Sistema web para a equipe de TI, com quatro módulos:
 
 - **Equipamentos**: inventário por unidade, com histórico de movimentações, garantias e exportação para Excel.
 - **Senhas dos computadores**: administrador local, BIOS, BitLocker etc., vinculadas a cada equipamento.
 - **Cofre de senhas**: acessos dos sistemas (SIEG, e-CAC, prefeituras, e-mails), por unidade ou "Geral".
+- **Termos de responsabilidade**: termos de equipamentos, de acessos ou completos, com numeração `TR-AAAA-NNNN`, impressão/PDF em A4, devolução e histórico. Itens vêm do estoque e acessos do cofre (antigo sistema *termoderesponsabilidade*, agora unificado aqui).
 
 ## Instalação (Windows)
 
@@ -30,6 +31,32 @@ O sistema lê o relatório do Windows **Informações do Sistema** (`msinfo32`) 
 O número de série e o patrimônio não constam no msinfo32 e continuam sendo digitados.
 
 O painel inicial mostra os pontos de atenção encontrados: Windows 10 ou anterior (sem suporte da Microsoft), máquinas com até 4 GB de memória, discos com 90% ou mais ocupados e computadores ainda sem configuração. Mudanças de memória, processador, disco ou sistema operacional entram automaticamente no histórico do equipamento.
+
+## Termos de responsabilidade
+
+- **Novo termo**: menu *Termos › Novo termo*, ou o botão **Gerar termo** na ficha de um equipamento (já vem com o equipamento, o responsável e o setor).
+- **Itens do estoque**: em cada item, escolha o equipamento do estoque. A descrição sai com marca, modelo e a configuração do msinfo32 (processador, memória, disco), e o patrimônio/série/hostname. Ao salvar, o equipamento passa a ter o colaborador como responsável, fica "Em uso" e a entrega entra no histórico dele. Itens digitados à mão continuam permitidos.
+- **Acessos do cofre**: em cada acesso, escolha o registro do cofre (preenche sistema, usuário e link) e defina a senha no termo: *Senha do cofre*, *Digitar senha* ou *Linha em branco*.
+- **Senhas no termo**: ficam gravadas no termo **criptografadas** (AES-256-GCM, mesma chave do cofre). A tela do termo e a impressão comum mostram `••••`. O botão **Imprimir com senhas** só aparece para quem tem acesso a senhas, e cada uso fica na **Auditoria** e no histórico do termo.
+- **Devolução**: em *Situação*, marque **Devolvido**. Os equipamentos ligados voltam para "Em estoque", sem responsável, e a devolução entra no histórico deles.
+- **Dados da empresa e logo** (administrador): *Termos › Dados da empresa*. Termos já emitidos mantêm os dados da época.
+- Quem pode: Administrador e Técnico criam e editam; Consulta só visualiza e imprime; só o Administrador exclui.
+
+### Trazer os termos do sistema antigo
+
+Os termos já emitidos no sistema *termoderesponsabilidade* (arquivo `termos.db`) são trazidos com o mesmo número, status, datas, itens, acessos, histórico e dados da empresa/logo:
+
+```
+python gerenciar.py importar-termos caminho/termos.db --simular      # mostra o resultado sem gravar
+python gerenciar.py importar-termos caminho/termos.db --mapa "Duque de Caxias=Caxias,Nova América=Nova América"
+```
+
+- Antes de gravar, é feito um backup `..._antes_importacao_termos.db`. O `termos.db` de origem só é lido, nunca alterado.
+- Pode rodar quantas vezes quiser: termos com número já existente são ignorados (rodar de novo com `--mapa` liga a unidade dos que ficaram sem).
+- Unidades são ligadas pelo nome. As que não existirem no Controle TI aparecem no resumo; use `--mapa` ou cadastre a unidade.
+- Itens cujo patrimônio ou nº de série bate com um equipamento do estoque ficam ligados a ele (o equipamento não é alterado).
+- Os usuários do sistema antigo **não** viram usuários aqui (o login do Controle TI protege a chave do cofre). Os nomes deles continuam no histórico de cada termo.
+- O envio do termo por e-mail (Gmail/SMTP) do sistema antigo ainda não foi trazido.
 
 ## Perfis
 
@@ -69,6 +96,28 @@ O comando pede o **código de recuperação** e redefine o acesso de um administ
 - **Para restaurar** pela tela: menu **Backup** › **Restaurar** na cópia desejada, digite `RESTAURAR` e confirme. Também dá para enviar um arquivo `.db` baixado antes (**Restaurar de um arquivo**). Antes de restaurar, o sistema guarda o estado atual como `..._antes_da_restauracao.db`, então dá para desfazer restaurando essa cópia. Depois da restauração todos entram de novo, com a senha que valia na data do backup.
 - **Pelo terminal** (servidor parado ou sem acesso à tela): `.venv\Scripts\python.exe gerenciar.py restaurar` lista as cópias e pede confirmação.
 
+## PythonAnywhere
+
+1. **Código**: no console Bash, `git clone https://github.com/WallaceSMiguel/controle-ti.git` (ou `cd ~/controle-ti && git pull`). Crie um virtualenv e `pip install -r requirements.txt`.
+2. **Dados fora do código**: crie `~/controle-ti-dados`. Se o Controle TI já roda aí, use a pasta de dados atual.
+3. **Arquivo WSGI** (aba *Web*): veja o modelo no topo de `wsgi.py`. Defina `CONTROLE_TI_DADOS` e `SQLITE_JOURNAL=DELETE` (o modo WAL do SQLite não é seguro no disco de rede do PythonAnywhere).
+4. **Arquivos estáticos** (aba *Web › Static files*): URL `/static/` → `/home/SEU_USUARIO/controle-ti/controle_ti/static`.
+5. **Force HTTPS**: ative na aba *Web*. O `config.ini` deve ficar com `https = sim` (cookies seguros).
+6. **Um worker só**: as sessões e a chave do cofre ficam na memória do processo. Com mais de um worker, o usuário cai da sessão aleatoriamente. Em contas pagas, deixe 1 worker para este app (ou peça a migração das sessões para outro armazenamento).
+7. **Backup**: o backup diário do `run.py` não roda no PythonAnywhere. Crie uma *Scheduled task* diária:
+   `cd ~/controle-ti && CONTROLE_TI_DADOS=~/controle-ti-dados ~/.virtualenvs/SEU_VENV/bin/python gerenciar.py backup`
+8. **Importar os termos de produção** (uma vez), no console, com as mesmas variáveis do WSGI:
+   ```
+   cd ~/controle-ti
+   export CONTROLE_TI_DADOS=~/controle-ti-dados SQLITE_JOURNAL=DELETE
+   python gerenciar.py importar-termos ~/CAMINHO_DO_DATA_DIR_ANTIGO/termos.db --simular
+   python gerenciar.py importar-termos ~/CAMINHO_DO_DATA_DIR_ANTIGO/termos.db --mapa "..."
+   ```
+   O caminho do `termos.db` é o `DATA_DIR` definido no WSGI do app antigo. Depois clique em **Reload**.
+9. Confira os termos importados e só então desative o app antigo. O arquivo `termos.db` continua lá como cópia de segurança.
+
+Não há migração manual de banco: as tabelas novas (`termos`, `termo_equipamentos`, `termo_historico`) são criadas sozinhas na primeira execução, sem tocar nos dados existentes.
+
 ## Configuração
 
 Na primeira execução é criado o arquivo `dados\config.ini`:
@@ -88,14 +137,16 @@ backup_manter = 30
 controle_ti/
 ├─ iniciar.bat           inicia o sistema no Windows
 ├─ run.py                servidor (HTTPS, backup diário)
-├─ gerenciar.py          recuperação de acesso e backup pelo terminal
+├─ gerenciar.py          recuperação de acesso, backup e importação de termos pelo terminal
+├─ wsgi.py               entrada para PythonAnywhere / servidores WSGI
 ├─ ferramentas/          coletar_msinfo32.bat (coleta da configuração)
 ├─ controle_ti/
 │  ├─ cripto.py          criptografia
 │  ├─ msinfo.py          leitura dos arquivos do msinfo32
 │  ├─ seguranca.py       sessões, perfis, auditoria
 │  ├─ db.py              banco SQLite
-│  ├─ rotas/             telas (painel, estoque, cofre, admin)
+│  ├─ termos.py          regras dos termos de responsabilidade e importação
+│  ├─ rotas/             telas (painel, estoque, termos, cofre, admin)
 │  ├─ templates/         HTML
 │  └─ static/            CSS, JS e logo
 ├─ testes/               testes automáticos (python -m pytest testes)

@@ -7,7 +7,8 @@
     <h1>{{ e.tipo }} {{ e.marca or '' }} {{ e.modelo or '' }}</h1>
     <p>{{ status_badge(e.status) }}&nbsp; {{ e.unidade }}{% if e.hostname %} · {{ e.hostname }}{% endif %}</p></div>
   <div class="acoes">
-    {% if usuario.pode_editar_estoque %}<a class="btn btn-primario" href="{{ url_for('estoque.editar', eid=e.id) }}">Editar</a>{% endif %}
+    {% if usuario.pode_editar_estoque %}<a class="btn" href="{{ url_for('termos.novo', equipamento=e.id) }}">Gerar termo</a>
+    <a class="btn btn-primario" href="{{ url_for('estoque.editar', eid=e.id) }}">Editar</a>{% endif %}
     {% if usuario.e_admin %}
     <form method="post" action="{{ url_for('estoque.excluir', eid=e.id) }}" data-confirmar="Excluir este equipamento, as senhas e o histórico dele? Para tirar de uso, prefira mudar o status para Baixado.">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-perigo" type="submit">Excluir</button></form>
@@ -124,6 +125,19 @@
     {% endif %}
   </div>
 
+  <div>
+  <section class="painel">
+    <div class="painel-cab"><h2>Termos de responsabilidade</h2></div>
+    <ul class="lista-simples">
+      {% for t in termos %}
+        <li><a href="{{ url_for('termos.detalhe', tid=t.id) }}"><strong>{{ t.numero }}</strong></a> · {{ t.colaborador }}
+          <span class="sub">{{ t.criado_em|databr }} · {{ {'ativo': 'Ativo', 'devolvido': 'Devolvido', 'cancelado': 'Cancelado'}[t.status] }}</span></li>
+      {% else %}
+        <li><span class="sub">Nenhum termo emitido para este equipamento.</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+
   <section class="painel">
     <div class="painel-cab"><h2>Histórico</h2></div>
     {% if usuario.pode_editar_estoque %}
@@ -139,5 +153,6 @@
       {% endfor %}
     </ol>
   </section>
+  </div>
 </div>
 {% endblock %}

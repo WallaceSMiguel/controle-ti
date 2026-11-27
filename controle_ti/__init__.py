@@ -71,8 +71,8 @@ def create_app(pasta_dados: str | None = None) -> Flask:
     db.inicializar(app.config["DB_PATH"])
     app.teardown_appcontext(db.fechar_db)
 
-    from .rotas import admin, auth, cofre, estoque, painel
-    for bp in (auth.bp, painel.bp, estoque.bp, cofre.bp, admin.bp):
+    from .rotas import admin, auth, cofre, estoque, painel, termos
+    for bp in (auth.bp, painel.bp, estoque.bp, termos.bp, cofre.bp, admin.bp):
         app.register_blueprint(bp)
 
     @app.before_request

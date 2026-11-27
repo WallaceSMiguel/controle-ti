@@ -5,13 +5,16 @@ r"""Ferramentas de manutenção pelo terminal.
     python gerenciar.py backup      -> cria um backup agora
     python gerenciar.py restaurar   -> volta o sistema para um backup (lista as cópias)
     python gerenciar.py restaurar caminho\do\arquivo.db
+    python gerenciar.py importar-termos caminho/termos.db [--mapa "Duque de Caxias=Caxias"] [--simular]
+                                    -> traz os termos do sistema antigo de Termos de
+                                       Responsabilidade (o arquivo de origem não é alterado)
 """
 import getpass
 import sys
 
 from werkzeug.security import generate_password_hash
 
-from controle_ti import backup, create_app, cripto, db
+from controle_ti import backup, create_app, cripto, db, termos
 
 
 def recuperar(app):
@@ -102,13 +105,71 @@ def restaurar(app, arquivo=None):
     return 0
 
 
+def importar_termos(app, args):
+    import shutil
+    import tempfile
+    from pathlib import Path
+    if not args:
+        print("Informe o caminho do termos.db. Ex.: python gerenciar.py importar-termos ~/dados-termos/termos.db")
+        return 1
+    origem = Path(args[0]).expanduser()
+    if not origem.is_file():
+        print(f"Arquivo não encontrado: {origem}")
+        return 1
+    mapa, simular = {}, "--simular" in args
+    for i, a in enumerate(args):
+        if a == "--mapa" and i + 1 < len(args):
+            for par in args[i + 1].split(","):
+                if "=" in par:
+                    de, para = par.split("=", 1)
+                    mapa[de.strip()] = para.strip()
+    destino = app.config["DB_PATH"]
+    if simular:
+        # roda numa cópia do banco para mostrar o resultado sem gravar nada
+        tmp = Path(tempfile.mkdtemp()) / "simulacao.db"
+        shutil.copy(destino, tmp)
+        destino = str(tmp)
+    else:
+        arq = backup.fazer_backup(destino, str(Path(app.config["PASTA_DADOS"]) / "backups"),
+                                  manter=0, sufixo="antes_importacao_termos")
+        print(f"Backup do estado atual: {arq}")
+    con = db.conectar(destino)
+    try:
+        res = termos.importar_banco_termos(con, str(origem), mapa)
+        if not simular:
+            con.execute("INSERT INTO auditoria (data, usuario, acao, detalhe, ip) "
+                        "VALUES (?, NULL, 'termos_importados', ?, 'terminal')",
+                        (db.agora(), f"{res['importados']} termos de {origem.name}"))
+            con.commit()
+    except termos.ErroImportacao as e:
+        print(f"Erro: {e}")
+        return 1
+    finally:
+        con.close()
+    print(("SIMULAÇÃO (nada foi gravado)\n" if simular else "") +
+          f"Termos importados: {res['importados']}\n"
+          f"Já existiam (ignorados): {res['ja_existiam']}\n"
+          f"Registros de histórico: {res['historico']}\n"
+          f"Itens ligados a equipamentos do estoque: {res['itens_vinculados']}\n"
+          f"Termos antigos que agora ganharam unidade: {res['unidades_religadas']}\n"
+          f"Dados da empresa/logo importados: {'sim' if res['empresa'] else 'não (já existiam)'}")
+    if res["unidades_sem_correspondencia"]:
+        print("\nUnidades sem correspondência no Controle TI (termos ficaram sem unidade vinculada, "
+              "o nome foi mantido): " + ", ".join(res["unidades_sem_correspondencia"]))
+        print('Rode de novo com --mapa "Nome antigo=Nome no Controle TI" (ou cadastre a unidade) para ligar; '
+              "nada é duplicado.")
+    return 0
+
+
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("recuperar", "backup", "restaurar"):
+    if len(sys.argv) < 2 or sys.argv[1] not in ("recuperar", "backup", "restaurar", "importar-termos"):
         print(__doc__)
         return 1
     app = create_app()
     if sys.argv[1] == "recuperar":
         return recuperar(app)
+    if sys.argv[1] == "importar-termos":
+        return importar_termos(app, sys.argv[2:])
     if sys.argv[1] == "restaurar":
         return restaurar(app, sys.argv[2] if len(sys.argv) > 2 else None)
     from pathlib import Path
