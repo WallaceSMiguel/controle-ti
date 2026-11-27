@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_termo_documento.html" import documento %}
+{% block titulo %}Termo {{ t.numero }}{% endblock %}
+{% block conteudo %}
+<div class="topo">
+  <div><a class="voltar" href="{{ url_for('termos.lista') }}">← Termos</a>
+    <h1>Termo {{ t.numero }}</h1>
+    <p><span class="badge st-{{ {'ativo': 'em-uso', 'devolvido': 'em-estoque', 'cancelado': 'baixado'}[t.status] }}">{{ status[t.status] }}</span>&nbsp;
+      {{ t.colaborador }} · {{ tipos.get(t.tipo, t.tipo) }}{% if t.unidade_nome %} · {{ t.unidade_nome }}{% endif %}{% if t.origem == 'importado' %} · importado do sistema de termos{% endif %}</p></div>
+  <div class="acoes">
+    <a class="btn" href="{{ url_for('termos.imprimir', tid=t.id) }}" target="_blank" rel="noopener">Imprimir / PDF</a>
+    {% if tem_senhas and pode_senhas %}<a class="btn" href="{{ url_for('termos.imprimir', tid=t.id, senhas=1) }}" target="_blank" rel="noopener" title="A impressão com senhas fica registrada na auditoria">Imprimir com senhas</a>{% endif %}
+    {% if usuario.pode_editar_estoque %}<a class="btn btn-primario" href="{{ url_for('termos.editar', tid=t.id) }}">Editar</a>{% endif %}
+  </div>
+</div>
+
+<div class="grade-2-1">
+  <div>
+    <div class="folha-wrap"><article class="sheet">{{ documento(doc, t.numero, empresa) }}</article></div>
+  </div>
+  <div>
+    {% if usuario.pode_editar_estoque %}
+    <section class="painel">
+      <div class="painel-cab"><h2>Situação</h2></div>
+      <form method="post" action="{{ url_for('termos.mudar_status', tid=t.id) }}" class="painel-corpo" style="display:grid;gap:8px">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <select name="status" aria-label="Novo status">
+          {% for k, v in status.items() %}<option value="{{ k }}" {{ 'selected' if t.status == k }}>{{ v }}</option>{% endfor %}</select>
+        <input type="text" name="observacao" maxlength="500" placeholder="Observação (ex.: devolvido com carregador)">
+        <button class="btn" type="submit">Atualizar situação</button>
+        <small>Na devolução, os equipamentos do estoque ligados a este termo voltam para "Em estoque" e a devolução entra no histórico deles.</small>
+      </form>
+    </section>
+    {% endif %}
+
+    <section class="painel">
+      <div class="painel-cab"><h2>Equipamentos do estoque</h2></div>
+      <ul class="lista-simples">
+        {% for e in equips %}
+          <li><a href="{{ url_for('estoque.detalhe', eid=e.id) }}"><strong>{{ e.tipo }} {{ e.marca or '' }} {{ e.modelo or '' }}</strong></a>
+            <span class="sub">{{ e.patrimonio or '' }}{% if e.hostname %} · {{ e.hostname }}{% endif %} · {{ e.status }}{% if e.responsavel %} · {{ e.responsavel }}{% endif %}</span></li>
+        {% else %}
+          <li><span class="sub">Nenhum item deste termo está ligado a um equipamento do estoque.</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="painel">
+      <div class="painel-cab"><h2>Histórico</h2></div>
+      <ol class="linha-tempo">
+        {% for h in hist %}
+          <li><div class="quando">{{ h.data|databr(true) }}{% if h.usuario %} · {{ h.usuario }}{% endif %}</div>{{ h.acao }}{% if h.detalhe %} — {{ h.detalhe }}{% endif %}</li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    {% if usuario.e_admin %}
+    <form method="post" action="{{ url_for('termos.excluir', tid=t.id) }}" data-confirmar="Excluir o termo {{ t.numero }}? Para encerrar, prefira marcar como Devolvido ou Cancelado.">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn btn-perigo" type="submit">Excluir termo</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,145 @@
+{#- Folha A4 do termo. Porte fiel do documento do sistema de termos.
+    S = dados do termo (acessos já com "senha" em claro ou vazia), numero = nº ou None,
+    empresa = dados atuais da empresa (o snapshot do termo tem prioridade). -#}
+{% macro fill(v, w=28) -%}
+{%- if v %}<span class="fill">{{ v }}</span>{% else %}<span class="fill empty">{% for _ in range(w) %}&nbsp;{% endfor %}</span>{% endif -%}
+{%- endmacro %}
+
+{% macro documento(S, numero, empresa) -%}
+{%- set E = dict(empresa, **(S.empresaSnapshot or {})) -%}
+{%- set logo = empresa.logo or url_for('static', filename='logo.svg') -%}
+{%- set tipo = S.tipo or 'equipamentos' -%}
+{%- set completo = tipo == 'completo' -%}
+{%- set itens = S.itens or [] -%}
+{%- set acessos = (S.acessos or [])|list -%}
+{%- set senha_oculta = acessos|selectattr('tem_senha')|rejectattr('senha')|list|length > 0 -%}
+<header class="doc-head">
+  <img src="{{ logo }}" alt="Logo">
+  <div class="meta"><b>{{ E.empresa }}</b><br>CNPJ {{ E.cnpj }}{% if S.unidade %}<br>Unidade <b>{{ S.unidade }}</b>{% endif %}<br>
+    <span class="doc-num">{{ ('Termo nº ' ~ numero) if numero else 'Rascunho – não salvo' }}</span></div>
+</header>
+
+{%- macro tabela_acessos() %}
+<table class="items acc"><thead><tr><th style="width:28px">Nº</th><th>Sistema / Serviço</th><th>Usuário / Login</th><th>Detalhe</th><th style="width:22%">Senha</th></tr></thead><tbody>
+{% for a in (acessos if acessos else [{}, {}, {}]) %}
+  <tr><td class="c">{{ loop.index }}</td><td><b>{{ a.sistema or '' }}</b>{% if not a.sistema %}&nbsp;{% endif %}</td><td>{{ a.usuario or '' }}</td>
+    <td>{{ a.detalhe or a.link or '' }}</td>
+    <td>{% if a.senha %}<span class="mono-doc">{{ a.senha }}</span>{% elif a.tem_senha %}<span class="mono-doc">••••••••</span>{% else %}<span class="blank-line"></span>{% endif %}</td></tr>
+{% endfor %}
+</tbody></table>
+<p class="note">{% if senha_oculta %}Senhas registradas no sistema de forma criptografada; aparecem apenas na impressão com senhas.{% else %}Senhas em branco são entregues pessoalmente.{% endif %}</p>
+{%- endmacro %}
+
+{%- macro clausulas_credenciais() %}
+<ul><li>Utilizar os acessos exclusivamente para atividades relacionadas à EMPRESA;</li>
+<li>Manter usuário e senha em sigilo — as credenciais são pessoais e intransferíveis;</li>
+<li>Alterar a senha no primeiro acesso, utilizando senha forte;</li>
+<li>Não anotar senhas em locais visíveis nem compartilhá-las com terceiros, inclusive colegas;</li>
+<li>Bloquear o computador ao se ausentar da estação de trabalho;</li>
+<li>Comunicar imediatamente qualquer suspeita de uso indevido, vazamento ou acesso não autorizado.</li></ul>
+{%- endmacro %}
+
+{%- macro assinaturas(declaracao) %}
+<p style="margin-top:14px">{{ declaracao }}</p>
+<div class="sig-wrap">
+  <div class="place-date">{{ fill(S.local, 30) }}, {{ fill(S.data|data_extenso, 30) }}.</div>
+  <div class="sigs">
+    <div class="sig">
+      <div class="line">{{ S.nome or '' }}{% if not S.nome %}&nbsp;{% endif %}</div>
+      <div class="role">Colaborador(a) – RESPONSÁVEL</div>
+      <dl><dt>CPF:</dt><dd>{{ S.cpf or '_____________________' }}</dd>{% if S.cargo %}<dt>Cargo:</dt><dd>{{ S.cargo }}</dd>{% endif %}</dl>
+    </div>
+    <div class="sig">
+      <div class="line">{{ S.recNome or '' }}{% if not S.recNome %}&nbsp;{% endif %}</div>
+      <div class="role">Entregue por – {{ E.empresa }}</div>
+      <dl><dt>Cargo:</dt><dd>{{ S.recCargo or '_____________________' }}</dd></dl>
+    </div>
+  </div>
+  <div class="obs-box"><b>Observações:</b> {{ (S.obs or '')|e|replace('\n', '<br>'|safe) }}</div>
+</div>
+<footer class="doc-foot"><span>{{ E.empresa }} · CNPJ {{ E.cnpj }}{% if S.unidade %} · Unidade {{ S.unidade }}{% endif %}{% if numero %} · {{ numero }}{% endif %}</span><span>{{ E.empContato or '' }}</span></footer>
+{%- endmacro %}
+
+{% if tipo == 'acessos' %}
+<h2 class="doc-title">TERMO DE RESPONSABILIDADE DE ACESSOS</h2>
+<p class="doc-sub">Ficha de acessos do colaborador a sistemas e serviços da empresa</p>
+<div class="ficha">
+  <div><span>Nome</span><b>{{ S.nome or '' }}&nbsp;</b></div>
+  <div><span>CPF</span><b>{{ S.cpf or '' }}&nbsp;</b></div>
+  <div><span>Cargo / Setor</span><b>{{ [S.cargo, S.setor]|select|join(' · ') }}&nbsp;</b></div>
+  <div><span>Unidade</span><b>{{ S.unidade or '' }}&nbsp;</b></div>
+</div>
+<p>Pelo presente instrumento, o(a) colaborador(a) acima identificado(a), doravante denominado(a) <b>RESPONSÁVEL</b>, declara receber da empresa
+<b>{{ E.empresa }}</b>, inscrita no CNPJ sob nº {{ E.cnpj }}, doravante denominada <b>EMPRESA</b>, os acessos relacionados abaixo, nas condições a seguir.</p>
+<section class="clause"><h3>Cláusula 1ª – Acessos fornecidos</h3>{{ tabela_acessos() }}</section>
+<section class="clause"><h3>Cláusula 2ª – Responsabilidades do(a) responsável</h3><p>O(a) RESPONSÁVEL compromete-se a:</p>{{ clausulas_credenciais() }}</section>
+<section class="clause"><h3>Cláusula 3ª – Confidencialidade e proteção de dados</h3>
+  <p>As informações acessadas — inclusive dados de clientes, colaboradores e documentos fiscais, contábeis e trabalhistas — são confidenciais e devem ser tratadas conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018) e as normas internas da EMPRESA, sendo vedada sua cópia, divulgação ou uso para fins pessoais, sob pena de responsabilidade civil, trabalhista e/ou criminal.</p></section>
+<section class="clause"><h3>Cláusula 4ª – Monitoramento</h3>
+  <p>O(a) RESPONSÁVEL está ciente de que os sistemas, e-mails, telefonia e recursos de rede são ferramentas de trabalho de propriedade da EMPRESA e podem ser monitorados para fins de segurança e conformidade.</p></section>
+<section class="clause"><h3>Cláusula 5ª – Revogação dos acessos</h3>
+  <p>Os acessos poderão ser alterados ou revogados a qualquer tempo e serão obrigatoriamente cancelados no término do vínculo ou mudança de função, sendo vedada qualquer tentativa de acesso posterior.</p></section>
+{{ assinaturas('Declaro que recebi meus acessos e estou ciente da responsabilidade sobre o uso adequado das informações e sistemas da empresa.') }}
+{% else %}
+{%- set n = 3 if completo else 2 -%}
+{%- macro c(k) %}{{ k + n }}ª{% endmacro -%}
+<h2 class="doc-title">{{ 'TERMO DE RESPONSABILIDADE POR EQUIPAMENTOS E ACESSOS' if completo else 'TERMO DE RESPONSABILIDADE POR EQUIPAMENTOS' }}</h2>
+<p class="doc-sub">{{ 'Instrumento de entrega de bens e de acessos a sistemas' if completo else 'Instrumento de entrega, guarda e devolução de bens' }}</p>
+
+<p>Pelo presente instrumento, eu {{ fill(S.nome, 40) }}, portador(a) do CPF nº {{ fill(S.cpf, 20) }} e RG nº {{ fill(S.rg, 20) }},
+residente à {{ fill(S.endereco, 50) }}{% if S.cargo or S.setor %}, ocupante do cargo de {{ fill(S.cargo, 20) }}{% if S.setor %} no setor {{ fill(S.setor) }}{% endif %}{% endif %}{% if S.unidade %}, lotado(a) na unidade {{ fill(S.unidade) }}{% endif %},
+doravante denominado(a) <b>RESPONSÁVEL</b>, declaro estar ciente das condições e responsabilidades referentes ao uso e conservação dos bens{{ ' e acessos' if completo }}
+fornecidos pela empresa <b>{{ E.empresa }}</b>, inscrita no CNPJ sob nº {{ E.cnpj }}, com sede em {{ E.empEndereco }},
+doravante denominada <b>EMPRESA</b>.</p>
+
+<section class="clause"><h3>Cláusula 1ª – Objeto</h3>
+  <p>O presente termo formaliza a responsabilidade do(a) RESPONSÁVEL pelo uso, guarda, conservação e devolução dos bens fornecidos pela EMPRESA, incluindo equipamentos, materiais, ferramentas e documentos{{ ', bem como pelo uso dos acessos a sistemas e serviços corporativos' if completo }}.</p></section>
+
+<section class="clause"><h3>Cláusula 2ª – Registro dos itens</h3>
+  <p>O(a) RESPONSÁVEL declara estar recebendo os seguintes itens sob sua responsabilidade:</p>
+  <table class="items"><thead><tr><th style="width:28px">Nº</th><th>Item / Equipamento</th><th>Patrimônio / Nº de série</th><th style="width:40px">Qtd.</th><th>Estado</th><th>Observações</th></tr></thead>
+  <tbody>
+  {% for it in (itens if itens else [{}, {}, {}]) %}
+    <tr><td class="c">{{ loop.index }}</td><td>{{ it.item or '' }}{% if not it.item %}&nbsp;{% endif %}</td><td>{{ it.serie or '' }}</td>
+    <td class="c">{{ it.qtd if it.item else '' }}</td>
+    <td>{% if it.item and it.estado %}<span class="pill {{ it.estado|pill_estado }}">{{ it.estado }}</span>{% endif %}</td><td>{{ it.obs or '' }}</td></tr>
+  {% endfor %}
+  </tbody></table></section>
+
+{% if completo %}
+<section class="clause"><h3>Cláusula 3ª – Acessos e credenciais</h3>
+  <p>Além dos bens acima, o(a) RESPONSÁVEL recebe os seguintes acessos, de uso pessoal e intransferível:</p>{{ tabela_acessos() }}
+  <p>Quanto aos acessos, o(a) RESPONSÁVEL compromete-se a:</p>{{ clausulas_credenciais() }}</section>
+{% endif %}
+
+<section class="clause"><h3>Cláusula {{ c(1) }} – Responsabilidades do(a) responsável</h3>
+  <p>O(a) RESPONSÁVEL compromete-se a:</p>
+  <ul><li>Utilizar os bens exclusivamente para atividades relacionadas à EMPRESA;</li>
+  <li>Zelar pela conservação e bom estado dos equipamentos;</li>
+  <li>Não ceder, transferir ou emprestar os bens a terceiros sem autorização expressa da EMPRESA;</li>
+  <li>Comunicar imediatamente qualquer dano, perda, furto ou mau funcionamento;</li>
+  <li>Devolver os bens nas mesmas condições em que foram recebidos, considerando desgaste natural;</li>
+  <li>Cumprir normas internas de segurança, confidencialidade e operação dos bens.</li></ul></section>
+
+<section class="clause"><h3>Cláusula {{ c(2) }} – Responsabilidade por danos</h3>
+  <p>O(a) RESPONSÁVEL poderá ser responsabilizado(a) por danos, perdas ou extravios resultantes de:</p>
+  <ul><li>Uso inadequado ou negligente;</li><li>Descumprimento das normas internas;</li><li>Perda ou extravio por ação ou omissão do(a) RESPONSÁVEL.</li></ul>
+  <p>O ressarcimento será calculado pelo valor de reposição ou reparo do item.</p></section>
+
+<section class="clause"><h3>Cláusula {{ c(3) }} – Devolução dos bens{{ ' e revogação dos acessos' if completo }}</h3>
+  <p>A devolução dos bens deverá ocorrer:</p>
+  <ul><li>No término do vínculo com a EMPRESA;</li><li>Quando solicitado formalmente;</li><li>Com todos os acessórios, manuais e documentos;</li><li>Em perfeitas condições de uso, considerando desgaste natural.</li></ul>
+  {% if completo %}<p>Os acessos serão revogados no término do vínculo ou mudança de função, sendo vedada qualquer tentativa de acesso posterior.</p>{% endif %}</section>
+
+<section class="clause"><h3>Cláusula {{ c(4) }} – Confidencialidade</h3>
+  <p>O(a) RESPONSÁVEL compromete-se a não divulgar informações confidenciais obtidas em razão do uso dos bens{{ ' e sistemas, observando a Lei Geral de Proteção de Dados (Lei nº 13.709/2018)' if completo }}, sob pena de responsabilidade civil e/ou criminal.</p></section>
+
+<section class="clause"><h3>Cláusula {{ c(5) }} – Vigência</h3>
+  <p>O presente termo entra em vigor na data de assinatura e permanecerá válido enquanto o(a) RESPONSÁVEL estiver utilizando os bens da EMPRESA, inclusive até a completa devolução.</p></section>
+
+<section class="clause"><h3>Cláusula {{ c(6) }} – Não devolução</h3>
+  <p>O(a) RESPONSÁVEL reconhece que os bens listados neste termo são propriedade exclusiva da EMPRESA. A não devolução ou apropriação dos bens sem autorização expressa da EMPRESA poderá caracterizar apropriação indébita, nos termos da legislação vigente, sujeitando o(a) RESPONSÁVEL às medidas civis e criminais cabíveis, além do ressarcimento integral do valor dos bens.</p>
+  <p><b>Parágrafo único:</b> A EMPRESA fará notificação (e-mail, mensagem) antes de acionar quaisquer medidas legais.</p></section>
+{{ assinaturas('E por estarem as partes assim pactuadas, firmam o presente termo de responsabilidade, declarando o(a) RESPONSÁVEL que recebeu os itens listados na Cláusula 2ª' ~ (' e os acessos listados na Cláusula 3ª' if completo else '') ~ '.') }}
+{% endif %}
+{%- endmacro %}

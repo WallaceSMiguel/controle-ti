@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "_macros.html" import erros_form %}
+{% from "_termo_documento.html" import documento %}
+{% block titulo %}{{ 'Editar termo ' ~ t.numero if t else 'Novo termo' }}{% endblock %}
+
+{% macro linha_item(it) %}
+<div class="item-linha" data-linha>
+  <div><label>Equipamento do estoque</label>
+    <select name="item_equip" data-equip>
+      <option value="">— digitar manualmente —</option>
+      {% for e in equipamentos %}<option value="{{ e.id }}" data-item="{{ e.item }}" data-serie="{{ e.serie }}" {{ 'selected' if it.equipamento_id == e.id }}>{{ e.rotulo }} ({{ e.unidade }})</option>{% endfor %}
+    </select></div>
+  <div><label>Item / Equipamento</label><input type="text" name="item" value="{{ it.item or '' }}" placeholder="Ex.: Notebook Dell"></div>
+  <div><label>Patrimônio / Nº série</label><input type="text" name="serie" value="{{ it.serie or '' }}"></div>
+  <div><label>Qtd.</label><input type="number" min="1" name="qtd" value="{{ it.qtd or 1 }}"></div>
+  <div><label>Estado</label><select name="estado">{% for e in estados %}<option {{ 'selected' if e == (it.estado or 'Novo') }}>{{ e }}</option>{% endfor %}</select></div>
+  <div><label>Observações</label><input type="text" name="item_obs" value="{{ it.obs or '' }}" placeholder="Ex.: acompanha carregador"></div>
+  <button type="button" class="btn btn-peq" data-remover-linha title="Remover">✕</button>
+</div>
+{% endmacro %}
+
+{% macro linha_acesso(a, idx, gravada) %}
+<div class="acesso-linha" data-linha>
+  <input type="hidden" name="ac_orig" value="{{ a._orig if a._orig is defined else (idx if idx is not none else '') }}">
+  {% if usuario.pode_cofre %}
+  <div><label>Do cofre de senhas</label>
+    <select name="ac_cofre" data-cofre>
+      <option value="">— digitar manualmente —</option>
+      {% for c in cofre %}<option value="{{ c.id }}" data-sistema="{{ c.sistema }}" data-usuario="{{ c.usuario or '' }}" data-detalhe="{{ c.url or '' }}" {{ 'selected' if a.cofre_id == c.id }}>{{ c.sistema }}{% if c.usuario %} · {{ c.usuario }}{% endif %} ({{ c.unidade or 'Geral' }})</option>{% endfor %}
+    </select></div>
+  {% else %}<input type="hidden" name="ac_cofre" value="{{ a.cofre_id or '' }}">{% endif %}
+  <div><label>Sistema / Serviço</label><input type="text" name="ac_sistema" value="{{ a.sistema or '' }}" placeholder="Ex.: Domínio Web"></div>
+  <div><label>Usuário / Login</label><input type="text" name="ac_usuario" value="{{ a.usuario or '' }}"></div>
+  <div><label>Detalhe / link</label><input type="text" name="ac_detalhe" value="{{ a.detalhe or a.link or '' }}"></div>
+  <div><label>Senha no termo</label>
+    <select name="ac_senha_origem" data-origem>
+      {% set og = a._origem or ('cofre' if a.cofre_id else 'digitada' if (gravada or not a.sistema) else 'nenhuma') %}
+      <option value="cofre" {{ 'selected' if og == 'cofre' }} {{ 'hidden' if not a.cofre_id and not usuario.pode_cofre }}>Senha do cofre</option>
+      <option value="digitada" {{ 'selected' if og == 'digitada' }}>{{ 'Manter a gravada ou digitar nova' if gravada else 'Digitar senha' }}</option>
+      <option value="nenhuma" {{ 'selected' if og == 'nenhuma' }}>Linha em branco (à mão)</option>
+    </select></div>
+  <div><label>Senha{% if gravada %} (gravada){% endif %}</label>
+    <div class="com-botao"><input type="text" name="ac_senha" value="{{ a._senha or '' }}" autocomplete="off" spellcheck="false" placeholder="{{ 'em branco = manter' if gravada else 'opcional' }}">
+      <button type="button" class="btn" data-gerar-linha title="Gerar senha">Gerar</button></div></div>
+  <button type="button" class="btn btn-peq" data-remover-linha title="Remover">✕</button>
+</div>
+{% endmacro %}
+
+{% block conteudo %}
+<div class="topo"><div>
+  <a class="voltar" href="{{ url_for('termos.detalhe', tid=t.id) if t else url_for('termos.lista') }}">← Voltar</a>
+  <h1>{{ 'Editar termo ' ~ t.numero if t else 'Novo termo de responsabilidade' }}</h1>
+  <p>Itens podem vir do estoque (com a configuração do msinfo32) e acessos do cofre de senhas.</p></div>
+</div>
+{{ erros_form(erros) }}
+<form method="post" class="painel" autocomplete="off" data-termo-form>
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <button type="submit" name="acao" value="salvar" class="oculto" tabindex="-1" aria-hidden="true"></button>
+
+  <div class="secao-form"><h3>Tipo de termo</h3>
+    <div class="tipo-escolha">
+      {% for k, v in tipos.items() %}<label><input type="radio" name="tipo" value="{{ k }}" data-tipo {{ 'checked' if (d.tipo or 'equipamentos') == k }}> {{ v }}</label>{% endfor %}
+    </div>
+  </div>
+
+  <div class="secao-form"><h3>Colaborador(a) e unidade</h3>
+    <div class="campos">
+      <div class="campo"><label for="unidade_id">Unidade</label>
+        <select id="unidade_id" name="unidade_id"><option value="">Selecione…</option>
+          {% for u in unidades %}<option value="{{ u.id }}" {{ 'selected' if d.unidade_id|string == u.id|string }}>{{ u.nome }}</option>{% endfor %}</select></div>
+      <div class="campo"><label for="nome">Nome completo</label><input type="text" id="nome" name="nome" value="{{ d.nome or '' }}" required></div>
+      <div class="campo"><label for="cpf">CPF</label><input type="text" id="cpf" name="cpf" value="{{ d.cpf or '' }}" inputmode="numeric" data-mascara-cpf placeholder="000.000.000-00"></div>
+      <div class="campo"><label for="rg">RG</label><input type="text" id="rg" name="rg" value="{{ d.rg or '' }}"></div>
+      <div class="campo largo" data-so="eq"><label for="endereco">Endereço</label><input type="text" id="endereco" name="endereco" value="{{ d.endereco or '' }}"></div>
+      <div class="campo"><label for="email">E-mail pessoal</label><input type="email" id="email" name="email" value="{{ d.email or '' }}"></div>
+      <div class="campo"><label for="cargo">Cargo / Função</label><input type="text" id="cargo" name="cargo" value="{{ d.cargo or '' }}"></div>
+      <div class="campo"><label for="setor">Setor</label><input type="text" id="setor" name="setor" value="{{ d.setor or '' }}"></div>
+    </div>
+  </div>
+
+  <div class="secao-form termo-itens" data-so="eq"><h3>Itens entregues</h3>
+    <div data-lista="itens">
+      {% for it in (d.itens or [{}]) %}{{ linha_item(it) }}{% endfor %}
+    </div>
+    <template data-modelo="itens">{{ linha_item({}) }}</template>
+    <p><button type="button" class="btn btn-peq" data-adicionar="itens">+ Adicionar item</button></p>
+    <small>Ao salvar, os equipamentos escolhidos do estoque passam a ter este colaborador como responsável, e a entrega entra no histórico deles.</small>
+  </div>
+
+  <div class="secao-form termo-itens" data-so="acc"><h3>Acessos fornecidos</h3>
+    <div data-lista="acessos">
+      {% for a in d.acessos or [] %}{{ linha_acesso(a, loop.index0, senhas_gravadas[loop.index0]) }}{% endfor %}
+    </div>
+    <template data-modelo="acessos">{{ linha_acesso({}, none, false) }}</template>
+    <p><button type="button" class="btn btn-peq" data-adicionar="acessos">+ Adicionar acesso</button></p>
+    <small>As senhas incluídas ficam gravadas no termo <strong>criptografadas</strong> e só aparecem na impressão com senhas, para quem tem acesso a senhas. Cada impressão fica na Auditoria.</small>
+  </div>
+
+  <div class="secao-form"><h3>Assinaturas, local e data</h3>
+    <div class="campos">
+      <div class="campo"><label for="local">Local</label><input type="text" id="local" name="local" value="{{ d.local or '' }}"></div>
+      <div class="campo"><label for="data">Data</label><input type="date" id="data" name="data" value="{{ d.data or '' }}"></div>
+      <div class="campo"><label for="recNome">Entregue por (nome)</label><input type="text" id="recNome" name="recNome" value="{{ d.recNome or '' }}"></div>
+      <div class="campo"><label for="recCargo">Cargo</label><input type="text" id="recCargo" name="recCargo" value="{{ d.recCargo or '' }}"></div>
+      <div class="campo largo"><label for="obs">Observações</label><textarea id="obs" name="obs">{{ d.obs or '' }}</textarea></div>
+    </div>
+  </div>
+
+  <div class="form-rodape">
+    <a class="btn" href="{{ url_for('termos.detalhe', tid=t.id) if t else url_for('termos.lista') }}">Cancelar</a>
+    <button class="btn" type="submit" name="acao" value="previa" formnovalidate>Pré-visualizar</button>
+    <button class="btn btn-primario" type="submit" name="acao" value="salvar">{{ 'Salvar alterações' if t else 'Salvar termo' }}</button>
+  </div>
+</form>
+
+{% if previa %}
+<section class="painel" id="previa">
+  <div class="painel-cab"><div><h2>Pré-visualização</h2><p>Ainda não salvo. Senhas aparecem como •••• até a impressão.</p></div></div>
+  <div class="folha-wrap"><article class="sheet">{{ documento(doc, t.numero if t else none, empresa) }}</article></div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,20 @@
+{% from "_termo_documento.html" import documento %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf" content="{{ csrf_token() }}">
+  <title>Termo {{ t.numero }} - {{ t.colaborador }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='termo.css') }}">
+</head>
+<body class="pagina-impressao" data-timeout="{{ timeout_min }}">
+  <div class="barra-impressao">
+    <span class="aviso">{% if com_senhas %}Esta via contém senhas. Não salve o PDF em pastas compartilhadas.{% endif %}</span>
+    <button class="btn btn-primario" type="button" data-imprimir>Imprimir / salvar PDF</button>
+  </div>
+  <article class="sheet">{{ documento(doc, t.numero, empresa) }}</article>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

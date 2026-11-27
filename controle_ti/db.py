@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from datetime import datetime
 
@@ -128,6 +129,47 @@ CREATE TABLE IF NOT EXISTS auditoria (
     ip TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_auditoria_data ON auditoria(data);
+
+-- Termos de responsabilidade (módulo vindo do sistema "termoderesponsabilidade").
+-- "dados" guarda o JSON do termo no mesmo formato do sistema antigo
+-- (nome, cpf, itens, acessos, local, data...). Senhas de acessos, quando existem,
+-- ficam DENTRO do JSON já cifradas com a chave do cofre (campo "senha_enc").
+CREATE TABLE IF NOT EXISTS termos (
+    id INTEGER PRIMARY KEY,
+    numero TEXT NOT NULL UNIQUE,
+    tipo TEXT NOT NULL DEFAULT 'equipamentos'
+        CHECK (tipo IN ('equipamentos', 'acessos', 'completo')),
+    status TEXT NOT NULL DEFAULT 'ativo' CHECK (status IN ('ativo', 'devolvido', 'cancelado')),
+    colaborador TEXT NOT NULL DEFAULT '',
+    cpf TEXT NOT NULL DEFAULT '',
+    unidade_id INTEGER REFERENCES unidades(id),
+    unidade_nome TEXT NOT NULL DEFAULT '',
+    dados TEXT NOT NULL,
+    criado_por TEXT,
+    criado_em TEXT NOT NULL,
+    atualizado_por TEXT,
+    atualizado_em TEXT NOT NULL,
+    devolvido_em TEXT,
+    origem TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_termos_colab ON termos(colaborador);
+
+CREATE TABLE IF NOT EXISTS termo_equipamentos (
+    termo_id INTEGER NOT NULL REFERENCES termos(id) ON DELETE CASCADE,
+    equipamento_id INTEGER NOT NULL REFERENCES equipamentos(id) ON DELETE CASCADE,
+    PRIMARY KEY (termo_id, equipamento_id)
+);
+CREATE INDEX IF NOT EXISTS ix_termo_equip ON termo_equipamentos(equipamento_id);
+
+CREATE TABLE IF NOT EXISTS termo_historico (
+    id INTEGER PRIMARY KEY,
+    termo_id INTEGER NOT NULL REFERENCES termos(id) ON DELETE CASCADE,
+    data TEXT NOT NULL,
+    usuario TEXT,
+    acao TEXT NOT NULL,
+    detalhe TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_termo_hist ON termo_historico(termo_id);
 """
 
 
@@ -156,7 +198,10 @@ def fechar_db(_exc=None):
 
 def inicializar(caminho: str):
     con = conectar(caminho)
-    con.execute("PRAGMA journal_mode = WAL")
+    # WAL é mais rápido, mas não é seguro em disco de rede (ex.: PythonAnywhere):
+    # lá, defina a variável de ambiente SQLITE_JOURNAL=DELETE.
+    modo = "DELETE" if os.environ.get("SQLITE_JOURNAL", "").upper() == "DELETE" else "WAL"
+    con.execute(f"PRAGMA journal_mode = {modo}")
     con.executescript(SCHEMA)
     con.commit()
     con.close()
